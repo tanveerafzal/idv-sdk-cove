@@ -91,25 +91,44 @@ export class ModalManager {
     document.body.appendChild(this.overlay);
   }
 
+  private isMobile(): boolean {
+    return window.innerWidth <= 480 || /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+  }
+
   private createContainer(): void {
     const theme = this.config.theme || {};
+    const mobile = this.isMobile();
 
     this.container = document.createElement('div');
     this.container.id = 'idv-sdk-modal';
 
-    Object.assign(this.container.style, {
-      width: '100%',
-      maxWidth: '420px',
-      height: '90vh',
-      maxHeight: '720px',
-      backgroundColor: theme.backgroundColor || '#ffffff',
-      borderRadius: theme.borderRadius || '16px',
-      overflow: 'hidden',
-      position: 'relative',
-      boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-      transform: 'scale(0.95) translateY(10px)',
-      transition: 'transform 0.2s ease-out',
-    });
+    // Use full screen on mobile, modal on desktop
+    if (mobile) {
+      Object.assign(this.container.style, {
+        width: '100%',
+        height: '100%',
+        backgroundColor: theme.backgroundColor || '#ffffff',
+        borderRadius: '0',
+        overflow: 'hidden',
+        position: 'relative',
+        transform: 'translateY(20px)',
+        transition: 'transform 0.2s ease-out',
+      });
+    } else {
+      Object.assign(this.container.style, {
+        width: '100%',
+        maxWidth: '420px',
+        height: '90vh',
+        maxHeight: '720px',
+        backgroundColor: theme.backgroundColor || '#ffffff',
+        borderRadius: theme.borderRadius || '16px',
+        overflow: 'hidden',
+        position: 'relative',
+        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+        transform: 'scale(0.95) translateY(10px)',
+        transition: 'transform 0.2s ease-out',
+      });
+    }
 
     // Add close button if enabled
     if (this.config.modal?.showCloseButton !== false) {
@@ -168,14 +187,22 @@ export class ModalManager {
     this.iframe = document.createElement('iframe');
     this.iframe.id = 'idv-sdk-iframe';
     this.iframe.src = this.config.iframeSrc;
-    this.iframe.setAttribute('allow', 'camera; microphone');
+
+    // Mobile-friendly iframe attributes
+    this.iframe.setAttribute('allow', 'camera; microphone; fullscreen');
     this.iframe.setAttribute('allowfullscreen', 'true');
+    this.iframe.setAttribute('scrolling', 'yes');
+    this.iframe.setAttribute('frameborder', '0');
 
     Object.assign(this.iframe.style, {
       width: '100%',
       height: '100%',
       border: 'none',
       display: 'block',
+      backgroundColor: '#ffffff',
+      // Fix iOS iframe scroll issues
+      WebkitOverflowScrolling: 'touch',
+      overflowY: 'auto',
     });
 
     this.container!.appendChild(this.iframe);
@@ -206,16 +233,32 @@ export class ModalManager {
     if (this.config.modal?.preventScroll !== false) {
       this.originalOverflow = document.body.style.overflow;
       document.body.style.overflow = 'hidden';
+
+      // Fix iOS body scroll issue
+      if (this.isMobile()) {
+        document.body.style.position = 'fixed';
+        document.body.style.width = '100%';
+        document.body.style.height = '100%';
+      }
     }
   }
 
   private restoreScroll(): void {
     if (this.config.modal?.preventScroll !== false) {
       document.body.style.overflow = this.originalOverflow;
+
+      // Restore iOS body
+      if (this.isMobile()) {
+        document.body.style.position = '';
+        document.body.style.width = '';
+        document.body.style.height = '';
+      }
     }
   }
 
   private animateIn(): void {
+    const mobile = this.isMobile();
+
     // Force reflow
     this.overlay!.offsetHeight;
 
@@ -224,17 +267,23 @@ export class ModalManager {
         this.overlay.style.opacity = '1';
       }
       if (this.container) {
-        this.container.style.transform = 'scale(1) translateY(0)';
+        this.container.style.transform = mobile
+          ? 'translateY(0)'
+          : 'scale(1) translateY(0)';
       }
     });
   }
 
   private animateOut(callback: () => void): void {
+    const mobile = this.isMobile();
+
     if (this.overlay) {
       this.overlay.style.opacity = '0';
     }
     if (this.container) {
-      this.container.style.transform = 'scale(0.95) translateY(10px)';
+      this.container.style.transform = mobile
+        ? 'translateY(20px)'
+        : 'scale(0.95) translateY(10px)';
     }
 
     setTimeout(callback, 200);

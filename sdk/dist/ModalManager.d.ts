@@ -33,6 +33,7 @@ export declare class ModalManager {
      */
     isOpen(): boolean;
     private createOverlay;
+    private isMobile;
     private createContainer;
     private createCloseButton;
     private createIframe;
