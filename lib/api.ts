@@ -23,6 +23,8 @@ export interface VerificationData {
 }
 
 export interface PartnerInfo {
+  id?: string;
+  partnerId?: string;
   companyName: string;
   logoUrl?: string;
 }

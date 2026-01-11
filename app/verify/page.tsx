@@ -24,6 +24,7 @@ import AppLayout from '@/components/AppLayout'
 import { Button } from '@/components/ui/button'
 import {
   getPartnerInfo,
+  validateApiKey,
   createVerification,
   uploadDocument,
   uploadSelfie,
@@ -101,10 +102,11 @@ function VerifyPageContent() {
     setError(null)
 
     try {
-      // Support both partner-id (direct link) and api-key (SDK embed)
-      const partnerIdParam = searchParams.get('partner-id') || searchParams.get('api-key')
+      // Check for partner-id (direct link) or api-key (SDK embed)
+      const directPartnerId = searchParams.get('partner-id')
+      const apiKey = searchParams.get('api-key')
 
-      if (!partnerIdParam) {
+      if (!directPartnerId && !apiKey) {
         const errorMsg = 'No partner ID provided. Please use a valid verification link.'
         setError(errorMsg)
         sendSDKMessage('IDV_ERROR', {
@@ -116,22 +118,44 @@ function VerifyPageContent() {
         return
       }
 
-      setPartnerId(partnerIdParam)
+      let resolvedPartnerId: string
+
+      // If using API key (SDK mode), validate it and get the partner ID
+      if (apiKey && !directPartnerId) {
+        try {
+          const partnerData = await validateApiKey(apiKey)
+          resolvedPartnerId = partnerData.id || partnerData.partnerId || apiKey
+          setPartnerInfo(partnerData)
+        } catch (e) {
+          const errorMsg = 'Invalid API key. Please check your configuration.'
+          setError(errorMsg)
+          sendSDKMessage('IDV_ERROR', {
+            code: 'INVALID_API_KEY',
+            message: errorMsg,
+            recoverable: false,
+          })
+          setIsLoading(false)
+          return
+        }
+      } else {
+        resolvedPartnerId = directPartnerId!
+        // Get partner info for direct link mode
+        try {
+          const partner = await getPartnerInfo(resolvedPartnerId)
+          setPartnerInfo(partner)
+        } catch (e) {
+          // Partner info is optional, continue without it
+        }
+      }
+
+      setPartnerId(resolvedPartnerId)
 
       // Notify SDK that verification has started
       sendSDKMessage('IDV_START', {})
 
-      // Get partner info
-      try {
-        const partner = await getPartnerInfo(partnerIdParam)
-        setPartnerInfo(partner)
-      } catch (e) {
-        // Partner info is optional, continue without it
-      }
-
       // Create new verification for this partner
-      const newVerification = await createVerification(partnerIdParam, {
-        source: 'web-flow',
+      const newVerification = await createVerification(resolvedPartnerId, {
+        source: sdkMode ? 'sdk' : 'web-flow',
       })
       setVerificationId(newVerification.id)
       setCurrentStep(2)
