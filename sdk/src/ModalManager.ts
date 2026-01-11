@@ -190,7 +190,6 @@ export class ModalManager {
 
     // Mobile-friendly iframe attributes
     this.iframe.setAttribute('allow', 'camera; microphone; fullscreen');
-    this.iframe.setAttribute('allowfullscreen', 'true');
     this.iframe.setAttribute('scrolling', 'yes');
     this.iframe.setAttribute('frameborder', '0');
 

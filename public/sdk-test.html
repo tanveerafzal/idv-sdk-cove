@@ -167,10 +167,8 @@
         log('INIT', 'Initializing SDK...');
         idv.init({
           apiKey: apiKey,
-          environment: 'sandbox',
-          debug: true,
-          // For local testing, point to localhost
-          baseUrl: 'http://localhost:3001'
+          environment: 'production',
+          debug: true
         });
         log('INIT', 'SDK initialized successfully');
 

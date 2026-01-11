@@ -277,7 +277,6 @@ class ModalManager {
         this.iframe.src = this.config.iframeSrc;
         // Mobile-friendly iframe attributes
         this.iframe.setAttribute('allow', 'camera; microphone; fullscreen');
-        this.iframe.setAttribute('allowfullscreen', 'true');
         this.iframe.setAttribute('scrolling', 'yes');
         this.iframe.setAttribute('frameborder', '0');
         Object.assign(this.iframe.style, {
@@ -397,10 +396,6 @@ class IDVCore {
         if (!config.apiKey) {
             throw new Error('API key is required');
         }
-        // Validate API key format (basic check)
-        if (!config.apiKey.startsWith('pk_')) {
-            console.warn('[IDV SDK] API key should start with "pk_" for public keys');
-        }
         this.config = {
             environment: 'production',
             debug: false,
@@ -517,9 +512,9 @@ class IDVCore {
     }
     getDefaultBaseUrl() {
         if (this.config.environment === 'sandbox') {
-            return 'https://verify.sandbox.trustcredo.com';
+            return 'https://cove.sandbox.trustcredo.com';
         }
-        return 'https://verify.trustcredo.com';
+        return 'https://cove.trustcredo.com';
     }
     getVerifyOrigin() {
         if (this.config.baseUrl) {
