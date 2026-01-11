@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IDV SDK Test Page</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 40px 20px;
+      background: #f5f5f5;
+    }
+    h1 {
+      color: #1a1a1a;
+      margin-bottom: 8px;
+    }
+    p {
+      color: #666;
+      margin-bottom: 24px;
+    }
+    .card {
+      background: white;
+      border-radius: 12px;
+      padding: 24px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      margin-bottom: 24px;
+    }
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 500;
+      color: #333;
+    }
+    input {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      font-size: 14px;
+      margin-bottom: 16px;
+    }
+    input:focus {
+      outline: none;
+      border-color: #0066cc;
+    }
+    button {
+      width: 100%;
+      padding: 14px;
+      background: #0066cc;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    button:hover {
+      background: #0052a3;
+    }
+    button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+    .log {
+      background: #1a1a1a;
+      border-radius: 8px;
+      padding: 16px;
+      font-family: 'SF Mono', Monaco, monospace;
+      font-size: 12px;
+      color: #00ff00;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+    .log-entry {
+      margin-bottom: 8px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #333;
+    }
+    .log-entry:last-child {
+      border-bottom: none;
+      margin-bottom: 0;
+    }
+    .log-time {
+      color: #888;
+    }
+    .log-type {
+      color: #00aaff;
+      font-weight: bold;
+    }
+    .log-success {
+      color: #00ff00;
+    }
+    .log-error {
+      color: #ff4444;
+    }
+  </style>
+</head>
+<body>
+  <h1>IDV SDK Test</h1>
+  <p>Test the Identity Verification SDK integration</p>
+
+  <div class="card">
+    <label for="apiKey">API Key</label>
+    <input type="text" id="apiKey" placeholder="pk_live_..." value="pk_test_demo123">
+
+    <label for="userId">User ID (optional)</label>
+    <input type="text" id="userId" placeholder="user_123">
+
+    <label for="userEmail">User Email (optional)</label>
+    <input type="email" id="userEmail" placeholder="user@example.com">
+
+    <button id="startBtn" onclick="startVerification()">Start Verification</button>
+  </div>
+
+  <div class="card">
+    <label>Event Log</label>
+    <div class="log" id="log">
+      <div class="log-entry">
+        <span class="log-time">[Ready]</span> SDK loaded, waiting for verification...
+      </div>
+    </div>
+  </div>
+
+  <!-- Load the SDK -->
+  <script src="/sdk/idv.min.js"></script>
+
+  <script>
+    // Access the IDV instance from the UMD bundle
+    const idv = IDV.IDV;
+
+    function log(type, message, isError = false) {
+      const logEl = document.getElementById('log');
+      const time = new Date().toLocaleTimeString();
+      const entry = document.createElement('div');
+      entry.className = 'log-entry';
+      entry.innerHTML = `
+        <span class="log-time">[${time}]</span>
+        <span class="log-type ${isError ? 'log-error' : ''}">${type}</span>
+        <span class="${isError ? 'log-error' : 'log-success'}">${message}</span>
+      `;
+      logEl.appendChild(entry);
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    async function startVerification() {
+      const apiKey = document.getElementById('apiKey').value;
+      const userId = document.getElementById('userId').value;
+      const userEmail = document.getElementById('userEmail').value;
+
+      if (!apiKey) {
+        log('ERROR', 'Please enter an API key', true);
+        return;
+      }
+
+      const btn = document.getElementById('startBtn');
+      btn.disabled = true;
+      btn.textContent = 'Verification in progress...';
+
+      try {
+        // Initialize SDK
+        log('INIT', 'Initializing SDK...');
+        idv.init({
+          apiKey: apiKey,
+          environment: 'sandbox',
+          debug: true,
+          // For local testing, point to localhost
+          baseUrl: 'http://localhost:3001'
+        });
+        log('INIT', 'SDK initialized successfully');
+
+        // Start verification
+        log('START', 'Opening verification modal...');
+        const result = await idv.start({
+          user: {
+            id: userId || undefined,
+            email: userEmail || undefined,
+          },
+          theme: {
+            primaryColor: '#0066cc',
+            borderRadius: '12px',
+          },
+          onReady: () => {
+            log('READY', 'Verification iframe ready');
+          },
+          onStart: () => {
+            log('START', 'User started verification');
+          },
+          onStep: (step) => {
+            log('STEP', `Step ${step.stepNumber}/${step.totalSteps}: ${step.step}`);
+          },
+          onComplete: (result) => {
+            log('COMPLETE', `Verification ${result.status}: ${result.result.passed ? 'PASSED' : 'FAILED'}`);
+            if (result.extractedData) {
+              log('DATA', `Name: ${result.extractedData.fullName || 'N/A'}`);
+            }
+          },
+          onError: (error) => {
+            log('ERROR', `${error.code}: ${error.message}`, true);
+          },
+          onClose: (reason) => {
+            log('CLOSE', `Modal closed: ${reason}`);
+          }
+        });
+
+        log('RESULT', JSON.stringify(result, null, 2));
+      } catch (error) {
+        log('ERROR', error.message || 'Unknown error', true);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Start Verification';
+      }
+    }
+
+    // Log when SDK is loaded
+    if (typeof IDV !== 'undefined') {
+      log('LOADED', `IDV SDK v${idv.getVersion()} loaded`);
+    }
+  </script>
+</body>
+</html>
