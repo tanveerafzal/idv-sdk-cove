@@ -1,0 +1,33 @@
+{
+  "name": "@anthropic/idv-sdk",
+  "version": "1.0.0",
+  "description": "Identity Verification SDK for embedding verification flows",
+  "type": "module",
+  "main": "dist/idv.min.js",
+  "module": "dist/idv.esm.js",
+  "types": "dist/idv.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "rollup -c",
+    "dev": "rollup -c -w",
+    "clean": "rimraf dist"
+  },
+  "devDependencies": {
+    "@rollup/plugin-node-resolve": "^15.2.3",
+    "@rollup/plugin-typescript": "^11.1.6",
+    "rimraf": "^5.0.5",
+    "rollup": "^4.9.6",
+    "@rollup/plugin-terser": "^0.4.4",
+    "tslib": "^2.6.2",
+    "typescript": "^5.3.3"
+  },
+  "keywords": [
+    "identity",
+    "verification",
+    "kyc",
+    "sdk"
+  ],
+  "license": "MIT"
+}

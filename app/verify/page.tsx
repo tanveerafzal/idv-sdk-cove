@@ -1,8 +1,15 @@
 'use client'
 
-import { useState, Suspense } from 'react'
+import { useState, useEffect, useCallback, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { ChevronLeft } from 'lucide-react'
+import {
+  sendToParent,
+  isSDKEmbed,
+  getParentOrigin,
+  getStepName,
+  maskDocumentNumber,
+} from '@/lib/sdk-messaging'
 import Image from 'next/image'
 import DocumentSelectStep from '@/components/verify/DocumentSelectStep'
 import DocumentCaptureStep from '@/components/verify/DocumentCaptureStep'
@@ -40,6 +47,11 @@ export interface VerificationData {
 function VerifyPageContent() {
   const searchParams = useSearchParams()
 
+  // SDK embed detection
+  const sdkMode = isSDKEmbed(searchParams)
+  const parentOrigin = getParentOrigin(searchParams)
+  const [startTime] = useState(() => Date.now())
+
   // Core state
   const [currentStep, setCurrentStep] = useState<VerificationStep>(1)
   const [verificationData, setVerificationData] = useState<VerificationData>({
@@ -58,20 +70,56 @@ function VerifyPageContent() {
   const [verificationResult, setVerificationResult] = useState<VerificationResult | null>(null)
   const [processingStatus, setProcessingStatus] = useState<string>('Initializing...')
 
+  // SDK messaging helper
+  const sendSDKMessage = useCallback(<T,>(type: Parameters<typeof sendToParent>[0], payload: T) => {
+    if (sdkMode) {
+      sendToParent(type, payload, parentOrigin)
+    }
+  }, [sdkMode, parentOrigin])
+
+  // Send ready message when component mounts in SDK mode
+  useEffect(() => {
+    if (sdkMode) {
+      sendSDKMessage('IDV_READY', {})
+    }
+  }, [sdkMode, sendSDKMessage])
+
+  // Send step changes to parent SDK
+  useEffect(() => {
+    if (sdkMode && currentStep > 1) {
+      sendSDKMessage('IDV_STEP', {
+        step: getStepName(currentStep),
+        stepNumber: currentStep,
+        totalSteps: 8,
+        timestamp: new Date().toISOString(),
+      })
+    }
+  }, [sdkMode, currentStep, sendSDKMessage])
+
   const initializeVerification = async () => {
     setIsLoading(true)
     setError(null)
 
     try {
-      const partnerIdParam = searchParams.get('partner-id')
+      // Support both partner-id (direct link) and api-key (SDK embed)
+      const partnerIdParam = searchParams.get('partner-id') || searchParams.get('api-key')
 
       if (!partnerIdParam) {
-        setError('No partner ID provided. Please use a valid verification link.')
+        const errorMsg = 'No partner ID provided. Please use a valid verification link.'
+        setError(errorMsg)
+        sendSDKMessage('IDV_ERROR', {
+          code: 'INVALID_API_KEY',
+          message: errorMsg,
+          recoverable: false,
+        })
         setIsLoading(false)
         return
       }
 
       setPartnerId(partnerIdParam)
+
+      // Notify SDK that verification has started
+      sendSDKMessage('IDV_START', {})
 
       // Get partner info
       try {
@@ -152,11 +200,40 @@ function VerifyPageContent() {
       const result = await submitVerification(verificationId, partnerId || undefined)
       setVerificationResult(result)
 
+      // Send complete message to SDK
+      sendSDKMessage('IDV_COMPLETE', {
+        verificationId,
+        status: result.passed ? 'passed' : 'failed',
+        result: {
+          passed: result.passed,
+          riskLevel: result.riskLevel,
+          message: result.message,
+        },
+        extractedData: result.passed ? {
+          fullName: result.extractedData?.fullName,
+          dateOfBirth: result.extractedData?.dateOfBirth,
+          documentNumber: maskDocumentNumber(result.extractedData?.documentNumber),
+          expiryDate: result.extractedData?.expiryDate,
+          issuingCountry: result.extractedData?.issuingCountry,
+        } : undefined,
+        completedAt: new Date().toISOString(),
+        duration: Date.now() - startTime,
+      })
+
       // Move to complete step
       setCurrentStep(8)
     } catch (err) {
       console.error('Verification submission error:', err)
-      setError(err instanceof Error ? err.message : 'Verification failed')
+      const errorMsg = err instanceof Error ? err.message : 'Verification failed'
+      setError(errorMsg)
+
+      // Send error to SDK
+      sendSDKMessage('IDV_ERROR', {
+        code: 'VERIFICATION_FAILED',
+        message: errorMsg,
+        recoverable: true,
+      })
+
       // Go back to selfie review to allow retry
       setCurrentStep(7)
     }
