@@ -29,6 +29,7 @@ import {
   uploadDocument,
   uploadSelfie,
   submitVerification,
+  sendWebhook,
   getApiDocumentType,
   type VerificationResult,
   type PartnerInfo,
@@ -243,6 +244,22 @@ function VerifyPageContent() {
         completedAt: new Date().toISOString(),
         duration: Date.now() - startTime,
       })
+
+      // Send webhook to partner if configured
+      if (partnerInfo?.webhookUrl && partnerId) {
+        sendWebhook({
+          webhookUrl: partnerInfo.webhookUrl,
+          verificationId,
+          partnerId,
+          result,
+          extractedData: result.extractedData,
+          source: sdkMode ? 'sdk' : 'web-flow',
+          duration: Date.now() - startTime,
+        }).catch((err) => {
+          // Log but don't block - webhook delivery is best-effort
+          console.error('Webhook delivery failed:', err)
+        })
+      }
 
       // Move to complete step
       setCurrentStep(8)

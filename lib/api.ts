@@ -27,6 +27,7 @@ export interface PartnerInfo {
   partnerId?: string;
   companyName: string;
   logoUrl?: string;
+  webhookUrl?: string;
 }
 
 export interface DocumentUploadResponse {
@@ -317,4 +318,45 @@ export const DOCUMENT_TYPES: Record<string, string> = {
 // Get document type for API
 export function getApiDocumentType(uiDocumentType: string): string {
   return DOCUMENT_TYPES[uiDocumentType] || 'OTHER';
+}
+
+/**
+ * 9. Send webhook notification to partner
+ */
+export async function sendWebhook(params: {
+  webhookUrl: string;
+  verificationId: string;
+  partnerId: string;
+  result: VerificationResult;
+  extractedData?: VerificationResult['extractedData'];
+  source?: string;
+  duration?: number;
+}): Promise<{ success: boolean; webhookId?: string; error?: string }> {
+  try {
+    const response = await fetch('/api/webhook', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        webhookUrl: params.webhookUrl,
+        verificationId: params.verificationId,
+        partnerId: params.partnerId,
+        result: {
+          passed: params.result.passed,
+          riskLevel: params.result.riskLevel,
+          message: params.result.message,
+        },
+        extractedData: params.extractedData,
+        source: params.source || 'sdk',
+        duration: params.duration || 0,
+      }),
+    });
+
+    return await response.json();
+  } catch (error) {
+    console.error('Failed to send webhook:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    };
+  }
 }
