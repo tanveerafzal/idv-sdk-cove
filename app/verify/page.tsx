@@ -497,13 +497,13 @@ function VerifyPageContent() {
       )}
 
       {/* Partner branding */}
-      {partnerInfo && currentStep === 2 && (
+      {/*partnerInfo && currentStep === 2 && (
         <div className="absolute top-16 left-0 right-0 px-6 pt-4 text-center">
           <p className="text-xs text-gray-500">
             Verification for <span className="font-medium text-gray-700">{partnerInfo.companyName}</span>
           </p>
         </div>
-      )}
+      )*/}
 
       {/* Main content */}
       <div className={`flex flex-col w-full h-full ${currentStep > 1 ? 'pt-16' : ''}`}>
