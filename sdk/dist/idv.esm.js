@@ -511,7 +511,7 @@ class IDVCore {
         if (this.config.environment === 'sandbox') {
             return 'https://sandbox.trustcredo.com';
         }
-        return 'https://76f7d5d0caed.ngrok-free.app';
+        return 'https://sdk.trustcredo.com';
     }
     getVerifyOrigin() {
         if (this.config.baseUrl) {
