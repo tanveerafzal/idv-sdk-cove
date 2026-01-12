@@ -475,7 +475,7 @@ function VerifyPageContent() {
     <AppLayout>
       {/* Header with back button and progress */}
       {currentStep > 1 && currentStep !== 7.5 && (
-        <div className="absolute top-6 left-0 right-0 px-6 sm:px-8 flex items-center gap-4">
+        <div className="absolute top-12 left-0 right-0 px-6 sm:px-8 flex items-center gap-4">
           {currentStep > 2 && currentStep < 8 && (
             <button
               onClick={handleBack}
@@ -506,8 +506,8 @@ function VerifyPageContent() {
       )*/}
 
       {/* Main content */}
-      <div className={`flex flex-col w-full h-full ${currentStep > 1 ? 'pt-16' : ''}`}>
-        <div className="animate-fade-in h-full" key={currentStep}>
+      <div className={`flex flex-col w-full flex-1 min-h-0 ${currentStep > 1 ? 'pt-12' : ''}`}>
+        <div className="animate-fade-in flex-1 min-h-0" key={currentStep}>
           {renderStep()}
         </div>
       </div>

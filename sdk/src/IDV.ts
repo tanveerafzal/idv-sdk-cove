@@ -161,9 +161,9 @@ export class IDVCore {
 
   private getDefaultBaseUrl(): string {
     if (this.config!.environment === 'sandbox') {
-      return 'https://cove.sandbox.trustcredo.com';
+      return 'https://sandbox.trustcredo.com';
     }
-    return 'https://cove.trustcredo.com';
+    return 'https://76f7d5d0caed.ngrok-free.app';
   }
 
   private getVerifyOrigin(): string {

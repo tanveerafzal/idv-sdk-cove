@@ -143,19 +143,16 @@ export class ModalManager {
     const button = document.createElement('button');
     button.id = 'idv-sdk-close';
     button.setAttribute('aria-label', 'Close verification');
-    button.innerHTML = `
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <line x1="18" y1="6" x2="6" y2="18"></line>
-        <line x1="6" y1="6" x2="18" y2="18"></line>
-      </svg>
-    `;
+    button.innerHTML = '&#10005;';
+    button.style.fontSize = '16px';
+    button.style.fontWeight = 'bold';
 
     Object.assign(button.style, {
       position: 'absolute',
       top: '12px',
       right: '12px',
-      width: '36px',
-      height: '36px',
+      width: '30px',
+      height: '30px',
       borderRadius: '50%',
       border: 'none',
       backgroundColor: 'rgba(0, 0, 0, 0.08)',

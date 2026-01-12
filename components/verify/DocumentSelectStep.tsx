@@ -1,6 +1,6 @@
 import { Button } from '@/components/ui/button'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { CountryDropdown, type Country } from '@/components/ui/country-dropdown'
 import { Separator } from '@/components/ui/separator'
 import { Label } from '@/components/ui/label'
 import { VerificationData } from '@/app/verify/page'
@@ -14,19 +14,6 @@ interface DocumentSelectStepProps {
   updateData: (data: Partial<VerificationData>) => void
 }
 
-const countries = [
-  'United States',
-  'Canada',
-  'United Kingdom',
-  'Australia',
-  'Germany',
-  'France',
-  'Spain',
-  'Italy',
-  'Netherlands',
-  'Sweden',
-]
-
 const documentTypes = [
   { id: 'drivers_license', label: 'Driver License', icon: '/driverslic-icon.svg' },
   { id: 'state_id', label: 'ID Card', icon: '/id-card-icon.svg' },
@@ -39,8 +26,8 @@ export default function DocumentSelectStep({
   onBack,
   updateData,
 }: DocumentSelectStepProps) {
-  const handleCountryChange = (value: string) => {
-    updateData({ country: value })
+  const handleCountryChange = (country: Country) => {
+    updateData({ country: country.name })
   }
 
   const handleDocumentTypeChange = (value: string) => {
@@ -50,36 +37,29 @@ export default function DocumentSelectStep({
   const canContinue = data.country && data.documentType
 
   return (
-    <div className="relative h-full">
-      <div className="space-y-6">
-        <div className="space-y-3 -mt-12">
-          <h1 className="text-2xl font-bold text-gray-900">Select ID type</h1>
-        </div>
+    <div className="flex flex-col h-full">
+      <div className="flex-1 min-h-0 overflow-y-auto">
+        <h1 className="text-2xl font-bold text-gray-900 mb-6">Select ID type</h1>
 
-      <div className="space-y-4 mt-8">
-        <div>
-          <Label htmlFor="country">Issuing country</Label>
-          <Select value={data.country} onValueChange={handleCountryChange}>
-            <SelectTrigger id="country" className="w-full mt-2">
-              <SelectValue placeholder="Select your country" />
-            </SelectTrigger>
-            <SelectContent>
-              {countries.map((country) => (
-                <SelectItem key={country} value={country}>
-                  {country}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        <div className="space-y-4">
+          <div>
+            <Label htmlFor="country">Issuing country</Label>
+            <div className="mt-2">
+              <CountryDropdown
+                placeholder="Select your country"
+                defaultValue={data.country}
+                onChange={handleCountryChange}
+              />
+            </div>
+          </div>
 
-        <Separator />
+          <Separator />
 
-        <div className="mt-10">
-          <Label>Document Type</Label>
-          <RadioGroup value={data.documentType} onValueChange={handleDocumentTypeChange} className="mt-2">
-            <div className="space-y-3">
-              {documentTypes.map((doc) => (
+          <div>
+            <Label>Document Type</Label>
+            <RadioGroup value={data.documentType} onValueChange={handleDocumentTypeChange} className="mt-2">
+              <div className="space-y-3">
+                {documentTypes.map((doc) => (
                   <label
                     key={doc.id}
                     htmlFor={doc.id}
@@ -97,14 +77,13 @@ export default function DocumentSelectStep({
                     )}
                   </label>
                 ))}
-            </div>
-          </RadioGroup>
+              </div>
+            </RadioGroup>
+          </div>
         </div>
       </div>
 
-      </div>
-
-      <div className="absolute bottom-0 left-0 right-0 px-2 sm:px-2 mb-[-190px] sm:mb-[-210px]">
+      <div className="flex-shrink-0 pt-4">
         <Button
           onClick={onNext}
           disabled={!canContinue}
