@@ -369,7 +369,9 @@ function VerifyPageContent() {
         return (
           <div className="flex flex-col w-full h-full">
             <div className="space-y-3">
-              <h1 className="text-2xl font-bold text-gray-900">Let's get started</h1>
+              <h1 className="text-2xl font-bold text-gray-900">
+                Let's get started <span className="text-white text-sm font-normal">v1.0.0</span>
+              </h1>
               <p className="text-gray-500 text-sm">
                 Verify your identity to keep your account secure.
               </p>
