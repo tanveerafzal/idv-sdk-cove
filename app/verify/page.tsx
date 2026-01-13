@@ -125,6 +125,8 @@ function VerifyPageContent() {
       if (apiKey && !directPartnerId) {
         try {
           const partnerData = await validateApiKey(apiKey)
+          console.log('[Partner] Validated API key, partner data:', partnerData)
+          console.log('[Partner] webhookUrl:', partnerData.webhookUrl)
           resolvedPartnerId = partnerData.id || partnerData.partnerId || apiKey
           setPartnerInfo(partnerData)
         } catch (e) {
@@ -143,8 +145,11 @@ function VerifyPageContent() {
         // Get partner info for direct link mode
         try {
           const partner = await getPartnerInfo(resolvedPartnerId)
+          console.log('[Partner] Got partner info:', partner)
+          console.log('[Partner] webhookUrl:', partner.webhookUrl)
           setPartnerInfo(partner)
         } catch (e) {
+          console.log('[Partner] Failed to get partner info:', e)
           // Partner info is optional, continue without it
         }
       }
