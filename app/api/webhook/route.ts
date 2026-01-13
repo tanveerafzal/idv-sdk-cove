@@ -104,10 +104,17 @@ export async function POST(request: NextRequest) {
     const inquiryId = `inq_${verificationId.replace(/-/g, '')}`
     const createdAt = new Date().toISOString()
 
-    // Parse full name into first and last
-    const nameParts = extractedData?.fullName?.split(' ') || []
-    const nameFirst = nameParts[0] || undefined
-    const nameLast = nameParts.slice(1).join(' ') || undefined
+    // Use firstName/lastName from API, or parse from fullName as fallback
+    const nameFirst = extractedData?.firstName || extractedData?.fullName?.split(' ')[0] || undefined
+    const nameLast = extractedData?.lastName || extractedData?.fullName?.split(' ').slice(1).join(' ') || undefined
+
+    // Extract address fields from nested address object
+    const address = extractedData?.address
+    const addressStreet = address?.street || undefined
+    const addressCity = address?.city || undefined
+    const addressState = address?.state || undefined
+    const addressPostalCode = address?.postalCode || undefined
+    const addressCountry = address?.country || extractedData?.issuingCountry || undefined
 
     const payload: WebhookPayload = {
       data: {
@@ -126,10 +133,10 @@ export async function POST(request: NextRequest) {
                 nameFirst,
                 nameLast,
                 birthdate: extractedData?.dateOfBirth,
-                addressStreet1: extractedData?.addressStreet1,
-                addressCity: extractedData?.addressCity,
-                addressSubdivision: extractedData?.addressSubdivision,
-                addressPostalCode: extractedData?.addressPostalCode,
+                addressStreet1: addressStreet,
+                addressCity: addressCity,
+                addressSubdivision: addressState,
+                addressPostalCode: addressPostalCode,
                 fields: {
                   ...(extractedData?.email && {
                     emailAddress: { type: 'string' as const, value: extractedData.email }
@@ -137,8 +144,8 @@ export async function POST(request: NextRequest) {
                   ...(extractedData?.phone && {
                     phoneNumber: { type: 'string' as const, value: extractedData.phone }
                   }),
-                  ...(extractedData?.issuingCountry && {
-                    addressCountryCode: { type: 'string' as const, value: extractedData.issuingCountry }
+                  ...(addressCountry && {
+                    addressCountryCode: { type: 'string' as const, value: addressCountry }
                   }),
                 },
               },

@@ -44,6 +44,14 @@ export interface SelfieUploadResponse {
   faceDetected: boolean;
 }
 
+export interface ExtractedAddress {
+  street?: string;
+  city?: string;
+  state?: string;
+  postalCode?: string;
+  country?: string;
+}
+
 export interface VerificationResult {
   passed: boolean;
   score: number;
@@ -56,14 +64,23 @@ export interface VerificationResult {
     faceMatchScore?: number;
     nameMatch?: boolean;
     nameMatchScore?: number;
+    livenessCheck?: boolean;
+    livenessScore?: number;
   };
   extractedData: {
+    documentNumber?: string;
+    firstName?: string;
+    lastName?: string;
     fullName?: string;
     dateOfBirth?: string;
-    documentNumber?: string;
-    expiryDate?: string;
+    gender?: string;
+    nationality?: string;
     issuingCountry?: string;
-    address?: string;
+    issueDate?: string;
+    expiryDate?: string;
+    address?: ExtractedAddress;
+    mrz?: string;
+    confidence?: number;
   };
   flags: string[];
   warnings: string[];
