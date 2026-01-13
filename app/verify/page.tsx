@@ -246,7 +246,16 @@ function VerifyPageContent() {
       })
 
       // Send webhook to partner if configured
+      console.log('[Webhook] Checking webhook conditions:', {
+        hasPartnerInfo: !!partnerInfo,
+        webhookUrl: partnerInfo?.webhookUrl,
+        partnerId,
+        verificationId,
+        resultPassed: result.passed,
+      })
+
       if (partnerInfo?.webhookUrl && partnerId) {
+        console.log('[Webhook] Sending webhook to:', partnerInfo.webhookUrl)
         sendWebhook({
           webhookUrl: partnerInfo.webhookUrl,
           verificationId,
@@ -255,10 +264,15 @@ function VerifyPageContent() {
           extractedData: result.extractedData,
           source: sdkMode ? 'sdk' : 'web-flow',
           duration: Date.now() - startTime,
-        }).catch((err) => {
-          // Log but don't block - webhook delivery is best-effort
-          console.error('Webhook delivery failed:', err)
         })
+          .then((response) => {
+            console.log('[Webhook] Delivery response:', response)
+          })
+          .catch((err) => {
+            console.error('[Webhook] Delivery failed:', err)
+          })
+      } else {
+        console.log('[Webhook] Skipped - missing webhookUrl or partnerId')
       }
 
       // Move to complete step
@@ -274,6 +288,40 @@ function VerifyPageContent() {
         message: errorMsg,
         recoverable: true,
       })
+
+      // Send webhook for failure case too
+      console.log('[Webhook] Verification failed, checking webhook for failure notification')
+      if (partnerInfo?.webhookUrl && partnerId && verificationId) {
+        console.log('[Webhook] Sending failure webhook to:', partnerInfo.webhookUrl)
+        sendWebhook({
+          webhookUrl: partnerInfo.webhookUrl,
+          verificationId,
+          partnerId,
+          result: {
+            passed: false,
+            score: 0,
+            riskLevel: 'HIGH',
+            message: errorMsg,
+            checks: {
+              documentAuthentic: false,
+              documentExpired: false,
+              documentTampered: false,
+            },
+            extractedData: {},
+            flags: [],
+            warnings: [],
+            canRetry: true,
+          },
+          source: sdkMode ? 'sdk' : 'web-flow',
+          duration: Date.now() - startTime,
+        })
+          .then((response) => {
+            console.log('[Webhook] Failure webhook response:', response)
+          })
+          .catch((webhookErr) => {
+            console.error('[Webhook] Failure webhook delivery failed:', webhookErr)
+          })
+      }
 
       // Go back to selfie review to allow retry
       setCurrentStep(7)

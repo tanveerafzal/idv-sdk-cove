@@ -63,8 +63,11 @@ function generateSignature(payload: string, timestamp: number): string {
 }
 
 export async function POST(request: NextRequest) {
+  console.log('[Webhook API] Received webhook request')
+
   try {
     const body = await request.json()
+    console.log('[Webhook API] Request body:', JSON.stringify(body, null, 2))
 
     const {
       webhookUrl,
@@ -77,6 +80,7 @@ export async function POST(request: NextRequest) {
     } = body
 
     if (!webhookUrl) {
+      console.log('[Webhook API] Error: No webhook URL provided')
       return NextResponse.json(
         { error: 'No webhook URL provided' },
         { status: 400 }
@@ -84,11 +88,14 @@ export async function POST(request: NextRequest) {
     }
 
     if (!verificationId || !partnerId) {
+      console.log('[Webhook API] Error: Missing required fields')
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
       )
     }
+
+    console.log('[Webhook API] Preparing to send webhook to:', webhookUrl)
 
     // Build webhook payload
     const timestamp = Math.floor(Date.now() / 1000)
@@ -170,6 +177,8 @@ export async function POST(request: NextRequest) {
     const payloadString = JSON.stringify(payload)
     const signature = generateSignature(payloadString, timestamp)
 
+    console.log('[Webhook API] Sending payload:', payloadString)
+
     // Send webhook
     const response = await fetch(webhookUrl, {
       method: 'POST',
@@ -182,17 +191,23 @@ export async function POST(request: NextRequest) {
       body: payloadString,
     })
 
+    console.log('[Webhook API] Response status:', response.status, response.statusText)
+
     if (!response.ok) {
-      console.error(`Webhook delivery failed: ${response.status} ${response.statusText}`)
+      const responseText = await response.text().catch(() => 'Unable to read response')
+      console.error(`[Webhook API] Delivery failed: ${response.status} ${response.statusText}`, responseText)
       return NextResponse.json(
         {
           success: false,
           error: 'Webhook delivery failed',
-          status: response.status
+          status: response.status,
+          details: responseText,
         },
         { status: 200 } // Return 200 to client even if webhook fails
       )
     }
+
+    console.log('[Webhook API] Webhook delivered successfully, eventId:', eventId)
 
     return NextResponse.json({
       success: true,
@@ -201,7 +216,7 @@ export async function POST(request: NextRequest) {
     })
 
   } catch (error) {
-    console.error('Webhook error:', error)
+    console.error('[Webhook API] Error:', error)
     return NextResponse.json(
       {
         success: false,
