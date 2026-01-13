@@ -68,6 +68,7 @@ function VerifyPageContent() {
   const [error, setError] = useState<string | null>(null)
   const [verificationId, setVerificationId] = useState<string | null>(null)
   const [partnerId, setPartnerId] = useState<string | null>(null)
+  const [userId, setUserId] = useState<string | null>(null)
   const [partnerInfo, setPartnerInfo] = useState<PartnerInfo | null>(null)
   const [verificationResult, setVerificationResult] = useState<VerificationResult | null>(null)
   const [processingStatus, setProcessingStatus] = useState<string>('Initializing...')
@@ -106,6 +107,13 @@ function VerifyPageContent() {
       // Check for partner-id (direct link) or api-key (SDK embed)
       const directPartnerId = searchParams.get('partner-id')
       const apiKey = searchParams.get('api-key')
+      const userIdParam = searchParams.get('user-id')
+
+      // Capture user ID from SDK caller
+      if (userIdParam) {
+        console.log('[User] Captured user-id from URL:', userIdParam)
+        setUserId(userIdParam)
+      }
 
       if (!directPartnerId && !apiKey) {
         const errorMsg = 'No partner ID provided. Please use a valid verification link.'
@@ -255,16 +263,19 @@ function VerifyPageContent() {
         hasPartnerInfo: !!partnerInfo,
         webhookUrl: partnerInfo?.webhookUrl,
         partnerId,
+        userId,
         verificationId,
         resultPassed: result.passed,
       })
 
       if (partnerInfo?.webhookUrl && partnerId) {
         console.log('[Webhook] Sending webhook to:', partnerInfo.webhookUrl)
+        console.log('[Webhook] referenceId (userId):', userId)
         sendWebhook({
           webhookUrl: partnerInfo.webhookUrl,
           verificationId,
           partnerId,
+          referenceId: userId || undefined,
           result,
           extractedData: result.extractedData,
           source: sdkMode ? 'sdk' : 'web-flow',
@@ -298,10 +309,12 @@ function VerifyPageContent() {
       console.log('[Webhook] Verification failed, checking webhook for failure notification')
       if (partnerInfo?.webhookUrl && partnerId && verificationId) {
         console.log('[Webhook] Sending failure webhook to:', partnerInfo.webhookUrl)
+        console.log('[Webhook] referenceId (userId):', userId)
         sendWebhook({
           webhookUrl: partnerInfo.webhookUrl,
           verificationId,
           partnerId,
+          referenceId: userId || undefined,
           result: {
             passed: false,
             score: 0,

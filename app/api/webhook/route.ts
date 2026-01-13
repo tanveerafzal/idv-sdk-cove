@@ -73,6 +73,7 @@ export async function POST(request: NextRequest) {
       webhookUrl,
       verificationId,
       partnerId,
+      referenceId,
       result,
       extractedData,
       source,
@@ -121,7 +122,7 @@ export async function POST(request: NextRequest) {
               type: 'inquiry',
               attributes: {
                 status: result?.passed ? 'completed' : 'failed',
-                referenceId: partnerId,
+                referenceId: referenceId || partnerId,
                 nameFirst,
                 nameLast,
                 birthdate: extractedData?.dateOfBirth,

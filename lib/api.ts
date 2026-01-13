@@ -130,13 +130,20 @@ export async function getPartnerInfo(partnerId: string): Promise<PartnerInfo> {
  * 4. Validate API key and get partner info
  */
 export async function validateApiKey(apiKey: string): Promise<PartnerInfo> {
-  const response = await fetch(getApiUrl(`/api/partners/validate-key?apiKey=${apiKey}`));
+  const url = getApiUrl(`/api/partners/validate-key?apiKey=${apiKey}`);
+  console.log('[API] Calling validate-key:', url);
+
+  const response = await fetch(url);
 
   if (!response.ok) {
+    console.log('[API] validate-key failed:', response.status, response.statusText);
     throw new Error('Invalid API key');
   }
 
   const data = await response.json();
+  console.log('[API] validate-key response:', JSON.stringify(data, null, 2));
+  console.log('[API] webhookUrl from response:', data.data?.webhookUrl || 'NOT FOUND');
+
   return data.data;
 }
 
@@ -327,11 +334,12 @@ export async function sendWebhook(params: {
   webhookUrl: string;
   verificationId: string;
   partnerId: string;
+  referenceId?: string;
   result: VerificationResult;
   extractedData?: VerificationResult['extractedData'];
   source?: string;
   duration?: number;
-}): Promise<{ success: boolean; webhookId?: string; error?: string }> {
+}): Promise<{ success: boolean; eventId?: string; error?: string }> {
   try {
     const response = await fetch('/api/webhook', {
       method: 'POST',
@@ -340,6 +348,7 @@ export async function sendWebhook(params: {
         webhookUrl: params.webhookUrl,
         verificationId: params.verificationId,
         partnerId: params.partnerId,
+        referenceId: params.referenceId,
         result: {
           passed: params.result.passed,
           riskLevel: params.result.riskLevel,
