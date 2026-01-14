@@ -68,7 +68,7 @@ export default function Home() {
                     Agree and continue
                   </Button>
                 </Link>
-                <p className="text-xs text-gray-400 text-center mt-2">{process.env.NEXT_PUBLIC_APP_VERSION}</p>
+                <p className="text-xs text-white text-center mt-2">{process.env.NEXT_PUBLIC_APP_VERSION}</p>
               </div>
             </div>
       </div>
