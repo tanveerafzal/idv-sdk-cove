@@ -9,7 +9,7 @@ export default function Home() {
       <div className="flex flex-col w-full h-full">
             <div className="space-y-3">
               <h1 className="text-2xl font-bold text-gray-900">
-                Let's get started <span className="text-white text-sm font-normal">v1.0.0</span>
+                Let's get started
               </h1>
               <p className="text-gray-500 text-sm">
                 Verify your identity to keep your account secure.
@@ -60,7 +60,7 @@ export default function Home() {
                 </p>
                 
                 <Link href="/verify" className="block">
-                  <Button 
+                  <Button
                     variant="idv"
                     className="w-full"
                     style={{ borderRadius: '8px', fontSize: '14px' }}
@@ -68,6 +68,7 @@ export default function Home() {
                     Agree and continue
                   </Button>
                 </Link>
+                <p className="text-xs text-gray-400 text-center mt-2">{process.env.NEXT_PUBLIC_APP_VERSION}</p>
               </div>
             </div>
       </div>
