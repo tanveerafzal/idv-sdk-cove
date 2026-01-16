@@ -176,7 +176,11 @@ export async function createVerification(
     source?: string;
   }
 ): Promise<{ id: string; status: string }> {
-  const response = await fetch(getApiUrl(`/api/verifications?partnerId=${partnerId}`), {
+  const url = getApiUrl(`/api/verifications?partnerId=${partnerId}`);
+  console.log('[API] createVerification - URL:', url);
+  console.log('[API] createVerification - referenceId:', options?.userId || 'NOT PROVIDED');
+
+  const response = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -287,6 +291,9 @@ export async function submitVerification(
   const url = partnerId
     ? getApiUrl(`/api/verifications/${verificationId}/submit?partnerId=${partnerId}`)
     : getApiUrl(`/api/verifications/${verificationId}/submit`);
+
+  console.log('[API] submitVerification - URL:', url);
+  console.log('[API] submitVerification - referenceId:', referenceId || 'NOT PROVIDED');
 
   const response = await fetch(url, {
     method: 'POST',
