@@ -161,7 +161,7 @@ export class IDVCore {
 
   private getDefaultBaseUrl(): string {
     if (this.config!.environment === 'sandbox') {
-      return 'https://sandbox.trustcredo.com';
+      return 'https://sdk-test.trustcredo.com';
     }
     return 'https://sdk.trustcredo.com';
   }

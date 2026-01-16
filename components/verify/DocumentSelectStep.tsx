@@ -92,21 +92,21 @@ export default function DocumentSelectStep({
           <div>
             <Label>Document Type</Label>
             <RadioGroup value={data.documentType} onValueChange={handleDocumentTypeChange} className="mt-2">
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {documentTypes.map((doc) => (
                   <label
                     key={doc.id}
                     htmlFor={doc.id}
-                    className={`flex items-center p-3 border rounded-lg cursor-pointer transition-colors ${
+                    className={`flex items-center p-2 border rounded-lg cursor-pointer transition-colors ${
                       data.documentType === doc.id ? 'border-gray-900 bg-gray-50' : 'hover:bg-gray-50'
                     }`}
                   >
                     <RadioGroupItem value={doc.id} id={doc.id} className="sr-only" />
-                    <Image src={doc.icon} alt={doc.label} width={40} height={40} />
-                    <span className="text-gray-900 ml-3 flex-1">{doc.label}</span>
+                    <Image src={doc.icon} alt={doc.label} width={28} height={28} />
+                    <span className="text-gray-900 ml-2 flex-1 text-sm">{doc.label}</span>
                     {data.documentType === doc.id && (
-                      <div className="w-6 h-6 bg-black rounded-full flex items-center justify-center">
-                        <Check className="w-4 h-4 text-white" />
+                      <div className="w-5 h-5 bg-black rounded-full flex items-center justify-center">
+                        <Check className="w-3 h-3 text-white" />
                       </div>
                     )}
                   </label>
