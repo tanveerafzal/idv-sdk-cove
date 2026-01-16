@@ -280,13 +280,20 @@ export async function uploadSelfie(
  */
 export async function submitVerification(
   verificationId: string,
-  partnerId?: string
+  partnerId?: string,
+  referenceId?: string
 ): Promise<VerificationResult> {
   const url = partnerId
     ? getApiUrl(`/api/verifications/${verificationId}/submit?partnerId=${partnerId}`)
     : getApiUrl(`/api/verifications/${verificationId}/submit`);
 
-  const response = await fetch(url, { method: 'POST' });
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      referenceId,
+    }),
+  });
   const data = await response.json();
 
   if (!response.ok && response.status === 429) {

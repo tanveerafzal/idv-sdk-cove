@@ -6,10 +6,11 @@ import { VerificationResult, PartnerInfo } from '@/lib/api'
 interface CompleteStepProps {
   result: VerificationResult | null
   onRetry?: () => void
+  onClose?: () => void
   partnerInfo?: PartnerInfo | null
 }
 
-export default function CompleteStep({ result, onRetry, partnerInfo }: CompleteStepProps) {
+export default function CompleteStep({ result, onRetry, onClose, partnerInfo }: CompleteStepProps) {
   const isPassed = result?.passed ?? false
   const canRetry = result?.canRetry && onRetry
 
@@ -34,10 +35,13 @@ export default function CompleteStep({ result, onRetry, partnerInfo }: CompleteS
     }
 
     // Failed verification
-    const message = result.message || 'We were unable to verify your identity. Please try again with clearer photos.'
+    const retriesExhausted = result.remainingRetries === 0 || result.canRetry === false
+    const message = retriesExhausted
+      ? 'All verification attempts have been used. Please contact support if you need assistance.'
+      : result.message || 'We were unable to verify your identity. Please try again with clearer photos.'
     return {
       icon: <XCircle className="w-16 h-16 text-red-500" />,
-      title: 'Verification Failed',
+      title: retriesExhausted ? 'Verification Unsuccessful' : 'Verification Failed',
       description: message,
       bgColor: 'bg-red-100',
     }
@@ -136,7 +140,7 @@ export default function CompleteStep({ result, onRetry, partnerInfo }: CompleteS
             variant="idv"
             className="w-full"
             style={{ borderRadius: '8px', fontSize: '14px' }}
-            onClick={() => window.location.href = '/'}
+            onClick={() => onClose ? onClose() : window.location.href = '/'}
           >
             Done
           </Button>
