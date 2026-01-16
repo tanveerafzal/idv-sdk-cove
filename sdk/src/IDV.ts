@@ -52,7 +52,7 @@ export class IDVCore {
       if (!this.config) {
         const error: SDKError = {
           code: ErrorCodes.NOT_INITIALIZED,
-          message: 'SDK not initialized. Call IDV.init() first.',
+          message: 'SDK not initialized. Call IDV.init() first ',
           recoverable: false,
         };
         options.onError?.(error);

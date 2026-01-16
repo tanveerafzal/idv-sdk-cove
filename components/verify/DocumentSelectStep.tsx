@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { Button } from '@/components/ui/button'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { CountryDropdown, type Country } from '@/components/ui/country-dropdown'
@@ -14,11 +15,26 @@ interface DocumentSelectStepProps {
   updateData: (data: Partial<VerificationData>) => void
 }
 
-const documentTypes = [
+const allDocumentTypes = [
   { id: 'drivers_license', label: 'Driver License', icon: '/driverslic-icon.svg' },
   { id: 'state_id', label: 'ID Card', icon: '/id-card-icon.svg' },
   { id: 'passport', label: 'Passport', icon: '/passport-icon.svg' },
 ]
+
+function getDocumentTypesForCountry(country: string) {
+  const countryLower = country?.toLowerCase() || ''
+
+  if (countryLower === 'canada') {
+    // Canada: all document types
+    return allDocumentTypes
+  } else if (countryLower === 'united states' || countryLower === 'united states of america' || countryLower === 'usa' || countryLower === 'us') {
+    // US: Passport and Driver License only
+    return allDocumentTypes.filter(doc => doc.id === 'passport' || doc.id === 'drivers_license')
+  } else {
+    // Other countries: Passport only
+    return allDocumentTypes.filter(doc => doc.id === 'passport')
+  }
+}
 
 export default function DocumentSelectStep({
   data,
@@ -26,8 +42,18 @@ export default function DocumentSelectStep({
   onBack,
   updateData,
 }: DocumentSelectStepProps) {
+  const documentTypes = useMemo(() => getDocumentTypesForCountry(data.country), [data.country])
+
   const handleCountryChange = (country: Country) => {
-    updateData({ country: country.name })
+    const newDocumentTypes = getDocumentTypesForCountry(country.name)
+    const isCurrentDocumentTypeValid = newDocumentTypes.some(doc => doc.id === data.documentType)
+
+    // Reset document type if current selection is not available for the new country
+    if (!isCurrentDocumentTypeValid) {
+      updateData({ country: country.name, documentType: '' })
+    } else {
+      updateData({ country: country.name })
+    }
   }
 
   const handleDocumentTypeChange = (value: string) => {
