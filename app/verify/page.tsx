@@ -435,7 +435,7 @@ function VerifyPageContent() {
               <div className="space-y-4">
                 <p className="text-xs text-gray-500 text-center">
                   By continuing, you agree to our{' '}
-                  <a href="#" className="underline">Privacy Policy</a>.
+                  <a href="https://partner.trustcredo.com/Privacy" target="_blank" rel="noopener noreferrer" className="underline">Privacy Policy</a>.
                 </p>
 
                 <Button
