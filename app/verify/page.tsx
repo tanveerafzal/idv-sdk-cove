@@ -508,12 +508,38 @@ function VerifyPageContent() {
         )
       case 2:
         return (
-          <DocumentSelectStep
-            data={verificationData}
-            onNext={handleNext}
-            onBack={handleBack}
-            updateData={updateVerificationData}
-          />
+          <div className="flex flex-col h-full">
+            {error && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                <div className="flex items-start gap-2">
+                  <div className="flex-shrink-0 w-5 h-5 bg-red-100 rounded-full flex items-center justify-center mt-0.5">
+                    <span className="text-red-600 text-xs font-bold">!</span>
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-red-800">Verification Failed</p>
+                    <p className="text-xs text-red-600 mt-1">{error}</p>
+                  </div>
+                  <button
+                    onClick={() => setError(null)}
+                    className="text-red-400 hover:text-red-600"
+                  >
+                    <span className="sr-only">Dismiss</span>
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            )}
+            <div className="flex-1 min-h-0">
+              <DocumentSelectStep
+                data={verificationData}
+                onNext={handleNext}
+                onBack={handleBack}
+                updateData={updateVerificationData}
+              />
+            </div>
+          </div>
         )
       case 3:
         return (
