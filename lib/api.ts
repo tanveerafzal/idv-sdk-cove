@@ -345,7 +345,7 @@ export function getApiDocumentType(uiDocumentType: string): string {
 }
 
 /**
- * 9. Send webhook notification to partner
+ * 9. Send webhook notification to partner via backend API
  */
 export async function sendWebhook(params: {
   webhookUrl: string;
@@ -358,26 +358,30 @@ export async function sendWebhook(params: {
   duration?: number;
 }): Promise<{ success: boolean; eventId?: string; error?: string }> {
   try {
-    const response = await fetch('/api/webhook', {
+    const url = getApiUrl(`/api/verifications/${params.verificationId}/sendPartnerWebhook?partnerId=${params.partnerId}`);
+
+    const response = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        webhookUrl: params.webhookUrl,
-        verificationId: params.verificationId,
-        partnerId: params.partnerId,
         referenceId: params.referenceId,
-        result: {
-          passed: params.result.passed,
-          riskLevel: params.result.riskLevel,
-          message: params.result.message,
-        },
-        extractedData: params.extractedData,
-        source: params.source || 'sdk',
-        duration: params.duration || 0,
       }),
     });
 
-    return await response.json();
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.error('Failed to send webhook via backend:', data);
+      return {
+        success: false,
+        error: data.error || 'Failed to send webhook',
+      };
+    }
+
+    return {
+      success: true,
+      eventId: data.data?.eventId,
+    };
   } catch (error) {
     console.error('Failed to send webhook:', error);
     return {
