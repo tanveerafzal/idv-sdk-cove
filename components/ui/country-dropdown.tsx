@@ -41,14 +41,32 @@ interface CountryDropdownProps {
   slim?: boolean;
 }
 
+// Priority countries to show at the top of the list
+const PRIORITY_COUNTRIES = ['CAN', 'USA'];
+
+const getDefaultCountryOptions = () => {
+  const filteredCountries = countries.all.filter(
+    (country: Country) =>
+      country.emoji && country.status !== "deleted" && country.ioc !== "PRK"
+  );
+
+  // Separate priority countries from the rest
+  const priorityList = PRIORITY_COUNTRIES
+    .map(code => filteredCountries.find((c: Country) => c.alpha3 === code))
+    .filter(Boolean) as Country[];
+
+  const otherCountries = filteredCountries.filter(
+    (country: Country) => !PRIORITY_COUNTRIES.includes(country.alpha3)
+  );
+
+  return [...priorityList, ...otherCountries];
+};
+
 const CountryDropdownComponent = (
   {
-    options = countries.all.filter(
-      (country: Country) =>
-        country.emoji && country.status !== "deleted" && country.ioc !== "PRK"
-    ),
+    options = getDefaultCountryOptions(),
     onChange,
-    defaultValue,
+    defaultValue = "Canada",
     disabled = false,
     placeholder = "Select a country",
     slim = false,
