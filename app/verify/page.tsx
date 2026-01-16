@@ -238,7 +238,55 @@ function VerifyPageContent() {
       const result = await submitVerification(verificationId, partnerId || undefined)
       setVerificationResult(result)
 
-      // Send complete message to SDK
+      // Check if verification failed and retry is allowed
+      if (!result.passed && (result.canRetry || (result.remainingRetries !== undefined && result.remainingRetries > 0))) {
+        console.log('[Verification] Failed but retry allowed:', {
+          canRetry: result.canRetry,
+          remainingRetries: result.remainingRetries,
+        })
+
+        // Send webhook for failed verification
+        if (partnerInfo?.webhookUrl && partnerId) {
+          console.log('[Webhook] Sending failure webhook to:', partnerInfo.webhookUrl)
+          sendWebhook({
+            webhookUrl: partnerInfo.webhookUrl,
+            verificationId,
+            partnerId,
+            referenceId: userId || undefined,
+            result,
+            extractedData: result.extractedData,
+            source: sdkMode ? 'sdk' : 'web-flow',
+            duration: Date.now() - startTime,
+          })
+            .then((response) => {
+              console.log('[Webhook] Failure webhook response:', response)
+            })
+            .catch((err) => {
+              console.error('[Webhook] Failure webhook failed:', err)
+            })
+        }
+
+        // Send retry event to SDK
+        sendSDKMessage('IDV_ERROR', {
+          code: 'VERIFICATION_FAILED',
+          message: result.message || 'Verification failed. Please try again.',
+          recoverable: true,
+          remainingRetries: result.remainingRetries,
+        })
+
+        // Set error message and allow retry
+        setError(result.message || 'Verification failed. Please try again with clearer images.')
+        setCurrentStep(2) // Go back to document selection to retry
+        setVerificationData({
+          country: verificationData.country,
+          documentType: '',
+          documentFrontImage: null,
+          selfieImage: null,
+        })
+        return
+      }
+
+      // Send complete message to SDK (for both final pass and final fail)
       sendSDKMessage('IDV_COMPLETE', {
         verificationId,
         status: result.passed ? 'passed' : 'failed',
@@ -258,7 +306,7 @@ function VerifyPageContent() {
         duration: Date.now() - startTime,
       })
 
-      // Send webhook to partner if configured
+      // Send webhook to partner if configured (only when verification is final - pass or no retries left)
       console.log('[Webhook] Checking webhook conditions:', {
         hasPartnerInfo: !!partnerInfo,
         webhookUrl: partnerInfo?.webhookUrl,
