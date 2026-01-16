@@ -17,19 +17,24 @@ interface DocumentSelectStepProps {
 
 const allDocumentTypes = [
   { id: 'drivers_license', label: 'Driver License', icon: '/driverslic-icon.svg' },
-  { id: 'state_id', label: 'ID Card', icon: '/id-card-icon.svg' },
+  { id: 'state_id', label: 'State ID', icon: '/id-card-icon.svg' },
   { id: 'passport', label: 'Passport', icon: '/passport-icon.svg' },
+  { id: 'passport_card', label: 'Passport Card', icon: '/passport-icon.svg' },
+  { id: 'permanent_resident', label: 'Permanent Resident Card', icon: '/id-card-icon.svg' },
+  { id: 'work_permit', label: 'Work Permit', icon: '/id-card-icon.svg' },
 ]
 
 function getDocumentTypesForCountry(country: string) {
   const countryLower = country?.toLowerCase() || ''
 
   if (countryLower === 'canada') {
-    // Canada: all document types
-    return allDocumentTypes
+    // Canada: Driver License, State ID, Passport
+    const canadaDocTypes = ['drivers_license', 'state_id', 'passport']
+    return allDocumentTypes.filter(doc => canadaDocTypes.includes(doc.id))
   } else if (countryLower === 'united states' || countryLower === 'united states of america' || countryLower === 'usa' || countryLower === 'us') {
-    // US: Passport and Driver License only
-    return allDocumentTypes.filter(doc => doc.id === 'passport' || doc.id === 'drivers_license')
+    // US: Passport, Driver License, State ID, Passport Card, Permanent Resident Card, Work Permit
+    const usDocTypes = ['passport', 'drivers_license', 'state_id', 'passport_card', 'permanent_resident', 'work_permit']
+    return allDocumentTypes.filter(doc => usDocTypes.includes(doc.id))
   } else {
     // Other countries: Passport only
     return allDocumentTypes.filter(doc => doc.id === 'passport')
