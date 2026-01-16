@@ -181,6 +181,7 @@ export async function createVerification(
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       type: 'IDENTITY',
+      referenceId: options?.userId,
       metadata: {
         source: options?.source || 'web',
         userId: options?.userId,
