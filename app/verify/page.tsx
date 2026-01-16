@@ -235,7 +235,7 @@ function VerifyPageContent() {
 
       // Step 3: Submit and get result
       setProcessingStatus('Completing verification...')
-      const result = await submitVerification(verificationId, partnerId || undefined)
+      const result = await submitVerification(verificationId, partnerId || undefined, userId || undefined)
       setVerificationResult(result)
 
       // Check if verification failed and retry is allowed
@@ -245,26 +245,26 @@ function VerifyPageContent() {
           remainingRetries: result.remainingRetries,
         })
 
-        // Send webhook for failed verification
-        if (partnerInfo?.webhookUrl && partnerId) {
-          console.log('[Webhook] Sending failure webhook to:', partnerInfo.webhookUrl)
-          sendWebhook({
-            webhookUrl: partnerInfo.webhookUrl,
-            verificationId,
-            partnerId,
-            referenceId: userId || undefined,
-            result,
-            extractedData: result.extractedData,
-            source: sdkMode ? 'sdk' : 'web-flow',
-            duration: Date.now() - startTime,
-          })
-            .then((response) => {
-              console.log('[Webhook] Failure webhook response:', response)
-            })
-            .catch((err) => {
-              console.error('[Webhook] Failure webhook failed:', err)
-            })
-        }
+        // Send webhook for failed verification - DISABLED (webhook sent from backend)
+        // if (partnerInfo?.webhookUrl && partnerId) {
+        //   console.log('[Webhook] Sending failure webhook to:', partnerInfo.webhookUrl)
+        //   sendWebhook({
+        //     webhookUrl: partnerInfo.webhookUrl,
+        //     verificationId,
+        //     partnerId,
+        //     referenceId: userId || undefined,
+        //     result,
+        //     extractedData: result.extractedData,
+        //     source: sdkMode ? 'sdk' : 'web-flow',
+        //     duration: Date.now() - startTime,
+        //   })
+        //     .then((response) => {
+        //       console.log('[Webhook] Failure webhook response:', response)
+        //     })
+        //     .catch((err) => {
+        //       console.error('[Webhook] Failure webhook failed:', err)
+        //     })
+        // }
 
         // Send retry event to SDK
         sendSDKMessage('IDV_ERROR', {
@@ -306,38 +306,38 @@ function VerifyPageContent() {
         duration: Date.now() - startTime,
       })
 
-      // Send webhook to partner if configured (only when verification is final - pass or no retries left)
-      console.log('[Webhook] Checking webhook conditions:', {
-        hasPartnerInfo: !!partnerInfo,
-        webhookUrl: partnerInfo?.webhookUrl,
-        partnerId,
-        userId,
-        verificationId,
-        resultPassed: result.passed,
-      })
+      // Send webhook to partner - DISABLED (webhook sent from backend)
+      // console.log('[Webhook] Checking webhook conditions:', {
+      //   hasPartnerInfo: !!partnerInfo,
+      //   webhookUrl: partnerInfo?.webhookUrl,
+      //   partnerId,
+      //   userId,
+      //   verificationId,
+      //   resultPassed: result.passed,
+      // })
 
-      if (partnerInfo?.webhookUrl && partnerId) {
-        console.log('[Webhook] Sending webhook to:', partnerInfo.webhookUrl)
-        console.log('[Webhook] referenceId (userId):', userId)
-        sendWebhook({
-          webhookUrl: partnerInfo.webhookUrl,
-          verificationId,
-          partnerId,
-          referenceId: userId || undefined,
-          result,
-          extractedData: result.extractedData,
-          source: sdkMode ? 'sdk' : 'web-flow',
-          duration: Date.now() - startTime,
-        })
-          .then((response) => {
-            console.log('[Webhook] Delivery response:', response)
-          })
-          .catch((err) => {
-            console.error('[Webhook] Delivery failed:', err)
-          })
-      } else {
-        console.log('[Webhook] Skipped - missing webhookUrl or partnerId')
-      }
+      // if (partnerInfo?.webhookUrl && partnerId) {
+      //   console.log('[Webhook] Sending webhook to:', partnerInfo.webhookUrl)
+      //   console.log('[Webhook] referenceId (userId):', userId)
+      //   sendWebhook({
+      //     webhookUrl: partnerInfo.webhookUrl,
+      //     verificationId,
+      //     partnerId,
+      //     referenceId: userId || undefined,
+      //     result,
+      //     extractedData: result.extractedData,
+      //     source: sdkMode ? 'sdk' : 'web-flow',
+      //     duration: Date.now() - startTime,
+      //   })
+      //     .then((response) => {
+      //       console.log('[Webhook] Delivery response:', response)
+      //     })
+      //     .catch((err) => {
+      //       console.error('[Webhook] Delivery failed:', err)
+      //     })
+      // } else {
+      //   console.log('[Webhook] Skipped - missing webhookUrl or partnerId')
+      // }
 
       // Move to complete step
       setCurrentStep(8)
@@ -353,41 +353,41 @@ function VerifyPageContent() {
         recoverable: true,
       })
 
-      // Send webhook for failure case too
-      console.log('[Webhook] Verification failed, checking webhook for failure notification')
-      if (partnerInfo?.webhookUrl && partnerId && verificationId) {
-        console.log('[Webhook] Sending failure webhook to:', partnerInfo.webhookUrl)
-        console.log('[Webhook] referenceId (userId):', userId)
-        sendWebhook({
-          webhookUrl: partnerInfo.webhookUrl,
-          verificationId,
-          partnerId,
-          referenceId: userId || undefined,
-          result: {
-            passed: false,
-            score: 0,
-            riskLevel: 'HIGH',
-            message: errorMsg,
-            checks: {
-              documentAuthentic: false,
-              documentExpired: false,
-              documentTampered: false,
-            },
-            extractedData: {},
-            flags: [],
-            warnings: [],
-            canRetry: true,
-          },
-          source: sdkMode ? 'sdk' : 'web-flow',
-          duration: Date.now() - startTime,
-        })
-          .then((response) => {
-            console.log('[Webhook] Failure webhook response:', response)
-          })
-          .catch((webhookErr) => {
-            console.error('[Webhook] Failure webhook delivery failed:', webhookErr)
-          })
-      }
+      // Send webhook for failure case - DISABLED (webhook sent from backend)
+      // console.log('[Webhook] Verification failed, checking webhook for failure notification')
+      // if (partnerInfo?.webhookUrl && partnerId && verificationId) {
+      //   console.log('[Webhook] Sending failure webhook to:', partnerInfo.webhookUrl)
+      //   console.log('[Webhook] referenceId (userId):', userId)
+      //   sendWebhook({
+      //     webhookUrl: partnerInfo.webhookUrl,
+      //     verificationId,
+      //     partnerId,
+      //     referenceId: userId || undefined,
+      //     result: {
+      //       passed: false,
+      //       score: 0,
+      //       riskLevel: 'HIGH',
+      //       message: errorMsg,
+      //       checks: {
+      //         documentAuthentic: false,
+      //         documentExpired: false,
+      //         documentTampered: false,
+      //       },
+      //       extractedData: {},
+      //       flags: [],
+      //       warnings: [],
+      //       canRetry: true,
+      //     },
+      //     source: sdkMode ? 'sdk' : 'web-flow',
+      //     duration: Date.now() - startTime,
+      //   })
+      //     .then((response) => {
+      //       console.log('[Webhook] Failure webhook response:', response)
+      //     })
+      //     .catch((webhookErr) => {
+      //       console.error('[Webhook] Failure webhook delivery failed:', webhookErr)
+      //     })
+      // }
 
       // Go back to selfie review to allow retry
       setCurrentStep(7)
@@ -599,6 +599,12 @@ function VerifyPageContent() {
           <CompleteStep
             result={verificationResult}
             onRetry={verificationResult?.canRetry ? handleRetry : undefined}
+            onClose={() => {
+              sendSDKMessage('IDV_CLOSE', {
+                verificationId,
+                status: verificationResult?.passed ? 'passed' : 'failed',
+              })
+            }}
             partnerInfo={partnerInfo}
           />
         )
