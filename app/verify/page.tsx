@@ -169,6 +169,7 @@ function VerifyPageContent() {
 
       // Create new verification for this partner
       const newVerification = await createVerification(resolvedPartnerId, {
+        userId: userIdParam || undefined,
         source: sdkMode ? 'sdk' : 'web-flow',
       })
       setVerificationId(newVerification.id)
