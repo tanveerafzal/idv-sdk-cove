@@ -188,6 +188,8 @@ function VerifyPageContent() {
 
   const handleNext = () => {
     if (currentStep < 8) {
+      // Clear error when moving forward
+      setError(null)
       setCurrentStep((prev) => {
         // After front document capture (step 3), check if back capture is needed
         if (prev === 3) {
@@ -209,6 +211,8 @@ function VerifyPageContent() {
 
   const handleBack = () => {
     if (currentStep > 2) {
+      // Clear error when navigating back
+      setError(null)
       setCurrentStep((prev) => {
         // From document review (step 4), go back to back capture if needed, else front capture
         if (prev === 4) {
@@ -243,7 +247,7 @@ function VerifyPageContent() {
     setError(null)
 
     try {
-      // Step 1: Upload document
+      // Step 1: Upload front document
       setProcessingStatus('Analyzing your document...')
       const documentType = getApiDocumentType(verificationData.documentType)
       await uploadDocument(
@@ -253,6 +257,18 @@ function VerifyPageContent() {
         'FRONT',
         partnerId || undefined
       )
+
+      // Step 1.5: Upload back document if exists
+      if (verificationData.documentBackImage) {
+        setProcessingStatus('Analyzing back of document...')
+        await uploadDocument(
+          verificationId,
+          verificationData.documentBackImage,
+          documentType,
+          'BACK',
+          partnerId || undefined
+        )
+      }
 
       // Step 2: Upload selfie
       setProcessingStatus('Processing your selfie...')
