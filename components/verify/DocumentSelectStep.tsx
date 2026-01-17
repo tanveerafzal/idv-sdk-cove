@@ -29,7 +29,9 @@ const allDocumentTypes = [
 ]
 
 // Document types that require back side capture
-export const DOCUMENTS_REQUIRING_BACK = ['health_card', 'permanent_resident', 'us_green_card']
+// Disabled for now: health_card, permanent_resident
+export const DOCUMENTS_REQUIRING_BACK: string[] = []
+//export const DOCUMENTS_REQUIRING_BACK = ['health_card', 'permanent_resident', 'us_green_card']
 
 function getDocumentTypesForCountry(country: string) {
   const countryLower = country?.toLowerCase() || ''
