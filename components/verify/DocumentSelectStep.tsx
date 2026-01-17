@@ -19,6 +19,7 @@ const allDocumentTypes = [
   { id: 'drivers_license', label: 'Driver License', icon: '/driverslic-icon.svg' },
   { id: 'state_id', label: 'State ID', icon: '/id-card-icon.svg' },
   { id: 'photo_card', label: 'Photo Card', icon: '/id-card-icon.svg' },
+  { id: 'health_card', label: 'Health Card', icon: '/id-card-icon.svg' },
   { id: 'passport', label: 'Passport', icon: '/passport-icon.svg' },
   { id: 'passport_card', label: 'Passport Card', icon: '/passport-icon.svg' },
   { id: 'permanent_resident', label: 'Permanent Resident Card', icon: '/id-card-icon.svg' },
@@ -27,12 +28,15 @@ const allDocumentTypes = [
   { id: 'indian_status', label: 'Certificate of Indian Status (SCIS)', icon: '/id-card-icon.svg' },
 ]
 
+// Document types that require back side capture
+export const DOCUMENTS_REQUIRING_BACK = ['health_card', 'permanent_resident', 'us_green_card']
+
 function getDocumentTypesForCountry(country: string) {
   const countryLower = country?.toLowerCase() || ''
 
   if (countryLower === 'canada') {
-    // Canada: Driver License, Photo Card, Passport, Permanent Resident Card, Certificate of Indian Status
-    const canadaDocTypes = ['drivers_license', 'photo_card', 'passport', 'permanent_resident', 'indian_status']
+    // Canada: Driver License, Photo Card, Health Card, Passport, Permanent Resident Card, Certificate of Indian Status
+    const canadaDocTypes = ['drivers_license', 'photo_card', 'health_card', 'passport', 'permanent_resident', 'indian_status']
     return allDocumentTypes.filter(doc => canadaDocTypes.includes(doc.id))
   } else if (countryLower === 'united states' || countryLower === 'united states of america' || countryLower === 'usa' || countryLower === 'us') {
     // US: Passport, Driver License, State ID, Passport Card, Green Card, Work Permit

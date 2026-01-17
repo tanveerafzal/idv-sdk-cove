@@ -11,8 +11,9 @@ import {
   maskDocumentNumber,
 } from '@/lib/sdk-messaging'
 import Image from 'next/image'
-import DocumentSelectStep from '@/components/verify/DocumentSelectStep'
+import DocumentSelectStep, { DOCUMENTS_REQUIRING_BACK } from '@/components/verify/DocumentSelectStep'
 import DocumentCaptureStep from '@/components/verify/DocumentCaptureStep'
+import DocumentBackCaptureStep from '@/components/verify/DocumentBackCaptureStep'
 import DocumentReviewStep from '@/components/verify/DocumentReviewStep'
 import SelfieIntroStep from '@/components/verify/SelfieIntroStep'
 import SelfieStep from '@/components/verify/SelfieStep'
@@ -35,14 +36,16 @@ import {
   type PartnerInfo,
 } from '@/lib/api'
 
-export type VerificationStep = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 7.5 | 8
+export type VerificationStep = 1 | 2 | 3 | 3.5 | 4 | 5 | 6 | 7 | 7.5 | 8
 
 export interface VerificationData {
   country: string
   documentType: string
   documentFrontImage: string | null
+  documentBackImage: string | null
   selfieImage: string | null
   retakeDocument?: boolean
+  retakeDocumentBack?: boolean
   retakeSelfie?: boolean
 }
 
@@ -60,6 +63,7 @@ function VerifyPageContent() {
     country: 'Canada',
     documentType: '',
     documentFrontImage: null,
+    documentBackImage: null,
     selfieImage: null,
   })
 
@@ -185,6 +189,18 @@ function VerifyPageContent() {
   const handleNext = () => {
     if (currentStep < 8) {
       setCurrentStep((prev) => {
+        // After front document capture (step 3), check if back capture is needed
+        if (prev === 3) {
+          const needsBackCapture = DOCUMENTS_REQUIRING_BACK.includes(verificationData.documentType)
+          if (needsBackCapture) {
+            return 3.5 as VerificationStep // Go to back capture
+          }
+          return 4 as VerificationStep // Skip to document review
+        }
+        // After back capture (step 3.5), go to document review
+        if (prev === 3.5) {
+          return 4 as VerificationStep
+        }
         const next = prev + 1
         return next as VerificationStep
       })
@@ -194,6 +210,18 @@ function VerifyPageContent() {
   const handleBack = () => {
     if (currentStep > 2) {
       setCurrentStep((prev) => {
+        // From document review (step 4), go back to back capture if needed, else front capture
+        if (prev === 4) {
+          const needsBackCapture = DOCUMENTS_REQUIRING_BACK.includes(verificationData.documentType)
+          if (needsBackCapture && verificationData.documentBackImage) {
+            return 3.5 as VerificationStep
+          }
+          return 3 as VerificationStep
+        }
+        // From back capture (step 3.5), go to front capture
+        if (prev === 3.5) {
+          return 3 as VerificationStep
+        }
         const next = prev - 1
         return next as VerificationStep
       })
@@ -282,6 +310,7 @@ function VerifyPageContent() {
           country: verificationData.country,
           documentType: '',
           documentFrontImage: null,
+          documentBackImage: null,
           selfieImage: null,
         })
         return
@@ -403,6 +432,7 @@ function VerifyPageContent() {
       country: verificationData.country,
       documentType: '',
       documentFrontImage: null,
+      documentBackImage: null,
       selfieImage: null,
     })
   }
@@ -545,6 +575,15 @@ function VerifyPageContent() {
       case 3:
         return (
           <DocumentCaptureStep
+            data={verificationData}
+            onNext={handleNext}
+            onBack={handleBack}
+            updateData={updateVerificationData}
+          />
+        )
+      case 3.5:
+        return (
+          <DocumentBackCaptureStep
             data={verificationData}
             onNext={handleNext}
             onBack={handleBack}
