@@ -10,9 +10,10 @@ interface IDCaptureOverlayProps {
   onCapture: (imageData: string) => void
   onBack: () => void
   videoRef: React.RefObject<HTMLVideoElement>
+  isBackSide?: boolean
 }
 
-const IDCaptureOverlay = ({ documentType, onCapture, onBack, videoRef }: IDCaptureOverlayProps) => {
+const IDCaptureOverlay = ({ documentType, onCapture, onBack, videoRef, isBackSide = false }: IDCaptureOverlayProps) => {
   const [scannerOffset, setScannerOffset] = useState(0)
   const [showHelpModal, setShowHelpModal] = useState(false)
 
@@ -20,9 +21,16 @@ const IDCaptureOverlay = ({ documentType, onCapture, onBack, videoRef }: IDCaptu
     const labels: Record<string, string> = {
       drivers_license: "Driver's License",
       state_id: 'ID Card',
+      health_card: 'Health Card',
       passport: 'Information Page of Passport',
+      passport_card: 'Passport Card',
+      permanent_resident: 'Permanent Resident Card',
+      us_green_card: 'Green Card',
+      work_permit: 'Work Permit',
+      indian_status: 'Certificate of Indian Status',
     }
-    return labels[documentType] || 'Document'
+    const label = labels[documentType] || 'Document'
+    return isBackSide ? `Back of ${label}` : label
   }
 
   useEffect(() => {
