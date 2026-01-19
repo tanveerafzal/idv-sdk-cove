@@ -48,7 +48,7 @@ export default function DocumentReviewStep({
               src={data.documentFrontImage || ''}
               alt="Document front"
               className="absolute inset-0 w-full h-full object-cover object-top"
-              style={{ transform: 'scale(1.3)', transformOrigin: 'top center' }}
+              style={{ transform: 'scale(1.6)', transformOrigin: 'top center' }}
             />
           </div>
         </div>
@@ -65,7 +65,7 @@ export default function DocumentReviewStep({
                 src={data.documentBackImage || ''}
                 alt="Document back"
                 className="absolute inset-0 w-full h-full object-cover object-top"
-                style={{ transform: 'scale(1.3)', transformOrigin: 'top center' }}
+                style={{ transform: 'scale(1.6)', transformOrigin: 'top center' }}
               />
             </div>
           </div>
