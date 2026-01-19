@@ -399,43 +399,24 @@ function VerifyPageContent() {
         recoverable: true,
       })
 
-      // Send webhook for failure case - DISABLED (webhook sent from backend)
-      // console.log('[Webhook] Verification failed, checking webhook for failure notification')
-      // if (partnerInfo?.webhookUrl && partnerId && verificationId) {
-      //   console.log('[Webhook] Sending failure webhook to:', partnerInfo.webhookUrl)
-      //   console.log('[Webhook] referenceId (userId):', userId)
-      //   sendWebhook({
-      //     webhookUrl: partnerInfo.webhookUrl,
-      //     verificationId,
-      //     partnerId,
-      //     referenceId: userId || undefined,
-      //     result: {
-      //       passed: false,
-      //       score: 0,
-      //       riskLevel: 'HIGH',
-      //       message: errorMsg,
-      //       checks: {
-      //         documentAuthentic: false,
-      //         documentExpired: false,
-      //         documentTampered: false,
-      //       },
-      //       extractedData: {},
-      //       flags: [],
-      //       warnings: [],
-      //       canRetry: true,
-      //     },
-      //     source: sdkMode ? 'sdk' : 'web-flow',
-      //     duration: Date.now() - startTime,
-      //   })
-      //     .then((response) => {
-      //       console.log('[Webhook] Failure webhook response:', response)
-      //     })
-      //     .catch((webhookErr) => {
-      //       console.error('[Webhook] Failure webhook delivery failed:', webhookErr)
-      //     })
-      // }
+      // Check if error is related to invalid/missing document
+      const isDocumentError = errorMsg.toLowerCase().includes('no valid id document') ||
+        errorMsg.toLowerCase().includes('document not found') ||
+        errorMsg.toLowerCase().includes('invalid document') ||
+        errorMsg.toLowerCase().includes('upload a government-issued id')
 
-      // Go back to selfie review to allow retry
+      if (isDocumentError) {
+        // Go back to document capture page and clear document images
+        setVerificationData(prev => ({
+          ...prev,
+          documentFrontImage: null,
+          documentBackImage: null,
+        }))
+        setCurrentStep(3) // Document capture page
+        return
+      }
+
+      // Go back to selfie review to allow retry for other errors
       setCurrentStep(7)
     }
   }
