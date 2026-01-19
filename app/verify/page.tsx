@@ -403,7 +403,9 @@ function VerifyPageContent() {
       const isDocumentError = errorMsg.toLowerCase().includes('no valid id document') ||
         errorMsg.toLowerCase().includes('document not found') ||
         errorMsg.toLowerCase().includes('invalid document') ||
-        errorMsg.toLowerCase().includes('upload a government-issued id')
+        errorMsg.toLowerCase().includes('upload a government-issued id') ||
+        errorMsg.toLowerCase().includes('unable to extract') ||
+        errorMsg.toLowerCase().includes('upload a clearer image')
 
       if (isDocumentError) {
         // Go back to document select page and clear document images
