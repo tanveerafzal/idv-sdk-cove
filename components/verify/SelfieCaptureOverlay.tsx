@@ -18,7 +18,11 @@ const SelfieCaptureOverlay = ({ onCapture, onClose }: SelfieCaptureOverlayProps)
     const startCamera = async () => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } }
+          video: {
+            facingMode: 'user',
+            width: { ideal: 1920, min: 1280 },
+            height: { ideal: 1080, min: 720 },
+          }
         })
         if (videoRef.current) {
           videoRef.current.srcObject = stream

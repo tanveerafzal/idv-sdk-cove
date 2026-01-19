@@ -200,7 +200,8 @@ const IDCaptureOverlay = ({ documentType, onCapture, onBack, videoRef, isBackSid
           cropX, cropY, cropWidth, cropHeight,  // Source rectangle
           0, 0, cropWidth, cropHeight            // Destination rectangle (same size)
         )
-        const base64String = canvas.toDataURL('image/jpeg', 0.95)
+        // Use maximum JPEG quality for best OCR results
+        const base64String = canvas.toDataURL('image/jpeg', 1.0)
         onCapture(base64String)
       }
     }
