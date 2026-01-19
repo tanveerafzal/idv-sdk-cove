@@ -35,29 +35,37 @@ export default function DocumentReviewStep({
           <p className="text-sm text-gray-600">Make sure all text is clear and readable</p>
         </div>
 
-        {/* Front of document */}
+        {/* Front of document - zoomed to show document area */}
         <div className="space-y-2">
           {hasBackImage && (
             <p className="text-sm font-medium text-gray-700">Front</p>
           )}
-          <div className="rounded-lg overflow-hidden border border-gray-200">
+          <div
+            className="rounded-lg overflow-hidden border border-gray-200 relative"
+            style={{ aspectRatio: '1.586 / 1' }}
+          >
             <img
               src={data.documentFrontImage || ''}
               alt="Document front"
-              className="w-full"
+              className="absolute inset-0 w-full h-full object-cover object-top"
+              style={{ transform: 'scale(1.3)', transformOrigin: 'top center' }}
             />
           </div>
         </div>
 
-        {/* Back of document (if captured) */}
+        {/* Back of document (if captured) - zoomed to show document area */}
         {hasBackImage && (
           <div className="space-y-2">
             <p className="text-sm font-medium text-gray-700">Back</p>
-            <div className="rounded-lg overflow-hidden border border-gray-200">
+            <div
+              className="rounded-lg overflow-hidden border border-gray-200 relative"
+              style={{ aspectRatio: '1.586 / 1' }}
+            >
               <img
                 src={data.documentBackImage || ''}
                 alt="Document back"
-                className="w-full"
+                className="absolute inset-0 w-full h-full object-cover object-top"
+                style={{ transform: 'scale(1.3)', transformOrigin: 'top center' }}
               />
             </div>
           </div>
