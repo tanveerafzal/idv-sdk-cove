@@ -20,8 +20,8 @@ const SelfieCaptureOverlay = ({ onCapture, onClose }: SelfieCaptureOverlayProps)
         const stream = await navigator.mediaDevices.getUserMedia({
           video: {
             facingMode: 'user',
-            width: { ideal: 1920, min: 1280 },
-            height: { ideal: 1080, min: 720 },
+            width: { ideal: 3840, min: 1280 },
+            height: { ideal: 2160, min: 720 },
           }
         })
         if (videoRef.current) {
@@ -42,7 +42,7 @@ const SelfieCaptureOverlay = ({ onCapture, onClose }: SelfieCaptureOverlayProps)
     }
   }, [])
 
-  // Capture photo - cropped to face oval area
+  // Capture photo - full frame at native resolution for best quality
   const handleCapture = useCallback(() => {
     if (!videoRef.current || !canvasRef.current) return
 
@@ -54,77 +54,23 @@ const SelfieCaptureOverlay = ({ onCapture, onClose }: SelfieCaptureOverlayProps)
 
     const videoWidth = video.videoWidth
     const videoHeight = video.videoHeight
-    const displayWidth = video.clientWidth
-    const displayHeight = video.clientHeight
 
-    // Determine if mobile or desktop
-    const isMobile = window.innerWidth < 640
+    // Capture full video frame at native resolution
+    // The oval overlay is just a positioning guide - backend will process the full image
+    canvas.width = videoWidth
+    canvas.height = videoHeight
 
-    // Oval dimensions (matching the CSS) with padding for context
-    const ovalWidth = isMobile ? 256 : 320  // w-64 or w-80
-    const ovalHeight = isMobile ? 320 : 384 // h-80 or h-96
+    // Disable smoothing to preserve sharpness at native resolution
+    ctx.imageSmoothingEnabled = false
 
-    // Add padding around the oval (50% extra on each side)
-    const paddingMultiplier = 1.5
-    const captureWidth = ovalWidth * paddingMultiplier
-    const captureHeight = ovalHeight * paddingMultiplier
-
-    // Capture area position: centered horizontally, 60% up from center vertically
-    const captureCenterX = displayWidth / 2
-    const captureCenterY = displayHeight * 0.4 // 60% from top = 40% position
-
-    const ovalLeft = captureCenterX - (captureWidth / 2)
-    const ovalTop = captureCenterY - (captureHeight / 2)
-
-    // Handle object-cover scaling
-    const videoAspect = videoWidth / videoHeight
-    const displayAspect = displayWidth / displayHeight
-
-    let visibleWidth, visibleHeight, offsetX, offsetY
-
-    if (videoAspect > displayAspect) {
-      // Video is wider - cropped on sides
-      visibleHeight = videoHeight
-      visibleWidth = videoHeight * displayAspect
-      offsetX = (videoWidth - visibleWidth) / 2
-      offsetY = 0
-    } else {
-      // Video is taller - cropped on top/bottom
-      visibleWidth = videoWidth
-      visibleHeight = videoWidth / displayAspect
-      offsetX = 0
-      offsetY = (videoHeight - visibleHeight) / 2
-    }
-
-    // Scale from display to video coordinates
-    const scaleX = visibleWidth / displayWidth
-    const scaleY = visibleHeight / displayHeight
-
-    // Convert capture area position to video coordinates
-    const cropX = offsetX + (ovalLeft * scaleX)
-    const cropY = offsetY + (ovalTop * scaleY)
-    const cropWidth = captureWidth * scaleX
-    const cropHeight = captureHeight * scaleY
-
-    // Account for mirroring - flip the X coordinate
-    const mirroredCropX = videoWidth - cropX - cropWidth
-
-    // Set canvas to crop dimensions
-    canvas.width = cropWidth
-    canvas.height = cropHeight
-
-    // Draw cropped and mirrored image
+    // Draw mirrored full frame (front camera is mirrored)
     ctx.save()
     ctx.translate(canvas.width, 0)
     ctx.scale(-1, 1)
-    ctx.drawImage(
-      video,
-      mirroredCropX, cropY, cropWidth, cropHeight,  // Source (use mirrored X)
-      0, 0, cropWidth, cropHeight                    // Destination
-    )
+    ctx.drawImage(video, 0, 0, videoWidth, videoHeight)
     ctx.restore()
 
-    const imageData = canvas.toDataURL('image/jpeg', 0.95)
+    const imageData = canvas.toDataURL('image/jpeg', 1.0)
     onCapture(imageData)
   }, [onCapture])
 
