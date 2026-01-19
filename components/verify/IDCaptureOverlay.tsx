@@ -142,14 +142,10 @@ const IDCaptureOverlay = ({ documentType, onCapture, onBack, videoRef, isBackSid
       const displayWidth = video.clientWidth
       const displayHeight = video.clientHeight
 
-      // Calculate scale factors between actual video and displayed size
-      const scaleX = videoWidth / displayWidth
-      const scaleY = videoHeight / displayHeight
-
       // Determine if mobile or desktop based on window width
       const isMobile = window.innerWidth < 640 // sm breakpoint
 
-      // Frame dimensions matching IDScannerFrame (with proper ID card aspect ratio)
+      // Frame dimensions matching IDScannerFrame
       const frameLeft = 24 // w-6 = 1.5rem = 24px
       const frameWidth = displayWidth - (frameLeft * 2)
       // ID card aspect ratio is ~1.586:1 (85.6mm x 54mm)
@@ -157,19 +153,40 @@ const IDCaptureOverlay = ({ documentType, onCapture, onBack, videoRef, isBackSid
       const frameHeight = frameWidth / idCardAspectRatio
       const frameTop = isMobile ? 140 : 200
 
-      // Convert to video coordinates
-      const cropX = frameLeft * scaleX
-      const cropY = frameTop * scaleY
+      // The video uses object-cover, so we need to calculate the actual visible area
+      const videoAspect = videoWidth / videoHeight
+      const displayAspect = displayWidth / displayHeight
+
+      let visibleWidth, visibleHeight, offsetX, offsetY
+
+      if (videoAspect > displayAspect) {
+        // Video is wider - it's cropped on sides
+        visibleHeight = videoHeight
+        visibleWidth = videoHeight * displayAspect
+        offsetX = (videoWidth - visibleWidth) / 2
+        offsetY = 0
+      } else {
+        // Video is taller - it's cropped on top/bottom
+        visibleWidth = videoWidth
+        visibleHeight = videoWidth / displayAspect
+        offsetX = 0
+        offsetY = (videoHeight - visibleHeight) / 2
+      }
+
+      // Calculate scale from display coordinates to visible video coordinates
+      const scaleX = visibleWidth / displayWidth
+      const scaleY = visibleHeight / displayHeight
+
+      // Convert frame position to video coordinates
+      const cropX = offsetX + (frameLeft * scaleX)
+      const cropY = offsetY + (frameTop * scaleY)
       const cropWidth = frameWidth * scaleX
       const cropHeight = frameHeight * scaleY
 
-      // Create canvas with high resolution output (minimum 1200px wide for quality)
-      const outputWidth = Math.max(cropWidth, 1200)
-      const outputHeight = outputWidth / idCardAspectRatio
-
+      // Create canvas with the actual cropped dimensions (no forced aspect ratio)
       const canvas = document.createElement('canvas')
-      canvas.width = outputWidth
-      canvas.height = outputHeight
+      canvas.width = cropWidth
+      canvas.height = cropHeight
 
       const ctx = canvas.getContext('2d')
       if (ctx) {
@@ -177,11 +194,11 @@ const IDCaptureOverlay = ({ documentType, onCapture, onBack, videoRef, isBackSid
         ctx.imageSmoothingEnabled = true
         ctx.imageSmoothingQuality = 'high'
 
-        // Draw the cropped region scaled up to output size
+        // Draw the cropped region at native resolution
         ctx.drawImage(
           video,
           cropX, cropY, cropWidth, cropHeight,  // Source rectangle
-          0, 0, outputWidth, outputHeight        // Destination rectangle
+          0, 0, cropWidth, cropHeight            // Destination rectangle (same size)
         )
         const base64String = canvas.toDataURL('image/jpeg', 0.95)
         onCapture(base64String)
