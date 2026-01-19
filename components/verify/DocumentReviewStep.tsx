@@ -10,9 +10,9 @@ interface DocumentReviewStepProps {
   error?: string | null
 }
 
-// Component to display document image with orientation-aware zoom
+// Component to display document image with orientation-aware display
 function ZoomableDocumentImage({ src, alt }: { src: string; alt: string }) {
-  const [isPortrait, setIsPortrait] = useState(false)
+  const [isPortrait, setIsPortrait] = useState<boolean | null>(null)
 
   useEffect(() => {
     if (!src) return
@@ -25,12 +25,20 @@ function ZoomableDocumentImage({ src, alt }: { src: string; alt: string }) {
     img.src = src
   }, [src])
 
-  // Portrait images (phone): minimal zoom, top focus to show document
-  // Landscape images (laptop): more zoom, top focus
-  const zoomStyle = isPortrait
-    ? { transform: 'scale(1.0)', transformOrigin: 'top center' }
-    : { transform: 'scale(1.6)', transformOrigin: 'top center' }
+  // Portrait images (phone): show full image without cropping
+  if (isPortrait) {
+    return (
+      <div className="rounded-lg overflow-hidden border border-gray-200">
+        <img
+          src={src}
+          alt={alt}
+          className="w-full h-auto"
+        />
+      </div>
+    )
+  }
 
+  // Landscape images (laptop): zoom and crop to show document area
   return (
     <div
       className="rounded-lg overflow-hidden border border-gray-200 relative"
@@ -40,7 +48,7 @@ function ZoomableDocumentImage({ src, alt }: { src: string; alt: string }) {
         src={src}
         alt={alt}
         className="absolute inset-0 w-full h-full object-cover"
-        style={zoomStyle}
+        style={{ transform: 'scale(1.6)', transformOrigin: 'top center' }}
       />
     </div>
   )
