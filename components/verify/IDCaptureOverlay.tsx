@@ -149,11 +149,13 @@ const IDCaptureOverlay = ({ documentType, onCapture, onBack, videoRef, isBackSid
       // Determine if mobile or desktop based on window width
       const isMobile = window.innerWidth < 640 // sm breakpoint
 
-      // Frame position in display coordinates (matches IDScannerFrame)
-      const frameTop = isMobile ? 180 : 270
-      const frameHeight = isMobile ? 200 : 180
+      // Frame dimensions matching IDScannerFrame (with proper ID card aspect ratio)
       const frameLeft = 24 // w-6 = 1.5rem = 24px
       const frameWidth = displayWidth - (frameLeft * 2)
+      // ID card aspect ratio is ~1.586:1 (85.6mm x 54mm)
+      const idCardAspectRatio = 1.586
+      const frameHeight = frameWidth / idCardAspectRatio
+      const frameTop = isMobile ? 140 : 200
 
       // Convert to video coordinates
       const cropX = frameLeft * scaleX
@@ -161,20 +163,27 @@ const IDCaptureOverlay = ({ documentType, onCapture, onBack, videoRef, isBackSid
       const cropWidth = frameWidth * scaleX
       const cropHeight = frameHeight * scaleY
 
-      // Create canvas with cropped dimensions
+      // Create canvas with high resolution output (minimum 1200px wide for quality)
+      const outputWidth = Math.max(cropWidth, 1200)
+      const outputHeight = outputWidth / idCardAspectRatio
+
       const canvas = document.createElement('canvas')
-      canvas.width = cropWidth
-      canvas.height = cropHeight
+      canvas.width = outputWidth
+      canvas.height = outputHeight
 
       const ctx = canvas.getContext('2d')
       if (ctx) {
-        // Draw only the cropped region
+        // Enable image smoothing for better quality
+        ctx.imageSmoothingEnabled = true
+        ctx.imageSmoothingQuality = 'high'
+
+        // Draw the cropped region scaled up to output size
         ctx.drawImage(
           video,
           cropX, cropY, cropWidth, cropHeight,  // Source rectangle
-          0, 0, cropWidth, cropHeight            // Destination rectangle
+          0, 0, outputWidth, outputHeight        // Destination rectangle
         )
-        const base64String = canvas.toDataURL('image/jpeg', 0.9)
+        const base64String = canvas.toDataURL('image/jpeg', 0.95)
         onCapture(base64String)
       }
     }
@@ -191,12 +200,10 @@ const IDCaptureOverlay = ({ documentType, onCapture, onBack, videoRef, isBackSid
         className="absolute inset-0 w-full h-full object-cover"
       />
 
-     <IDScannerFrame 
-  mobileTop={180}
-  desktopTop={270}
-  mobileHeight={200}
-  desktopHeight={180}
-  scannerOffset={scannerOffset} 
+     <IDScannerFrame
+  mobileTop={140}
+  desktopTop={200}
+  scannerOffset={scannerOffset}
 />
 
 
@@ -287,44 +294,41 @@ const IDCaptureOverlay = ({ documentType, onCapture, onBack, videoRef, isBackSid
 interface IDScannerFrameProps {
   mobileTop: number      // pixels from top on mobile
   desktopTop: number     // pixels from top on desktop
-  mobileHeight: number   // frame height on mobile
-  desktopHeight: number  // frame height on desktop
   scannerOffset: number
 }
 
-const IDScannerFrame = ({ mobileTop, desktopTop, mobileHeight, desktopHeight, scannerOffset }: IDScannerFrameProps) => {
+const IDScannerFrame = ({ mobileTop, desktopTop, scannerOffset }: IDScannerFrameProps) => {
+  const [frameHeight, setFrameHeight] = useState(200)
+
+  useEffect(() => {
+    const calculateFrameHeight = () => {
+      // ID card aspect ratio is ~1.586:1 (85.6mm x 54mm)
+      const idCardAspectRatio = 1.586
+      const frameWidth = window.innerWidth - 48 // 24px padding on each side
+      const calculatedHeight = frameWidth / idCardAspectRatio
+      setFrameHeight(calculatedHeight)
+    }
+
+    calculateFrameHeight()
+    window.addEventListener('resize', calculateFrameHeight)
+    return () => window.removeEventListener('resize', calculateFrameHeight)
+  }, [])
+
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 640
+  const topPosition = isMobile ? mobileTop : desktopTop
+
   return (
     <div className="absolute inset-0">
       {/* Top dark section */}
-      <div 
-        className="absolute top-0 left-0 right-0 bg-black/70" 
-        style={{ height: `${mobileTop}px` }}
-      />
-      <div 
-        className="absolute top-0 left-0 right-0 bg-black/70 hidden sm:block" 
-        style={{ height: `${desktopTop}px` }}
+      <div
+        className="absolute top-0 left-0 right-0 bg-black/70"
+        style={{ height: `${topPosition}px` }}
       />
 
       {/* Middle section with cutout */}
-      <div 
-        className="absolute left-0 right-0 flex sm:hidden" 
-        style={{ top: `${mobileTop}px`, height: `${mobileHeight}px` }}
-      >
-        <div className="w-6 bg-black/70" />
-        <div className="flex-1 relative rounded-2xl overflow-hidden">
-          <CornerBrackets />
-          <div
-            className="absolute left-2 right-2 h-0.5 bg-gradient-to-r from-transparent via-emerald-400 to-transparent opacity-60"
-            style={{ top: `${scannerOffset}%` }}
-          />
-        </div>
-        <div className="w-6 bg-black/70" />
-      </div>
-
-      {/* Desktop middle section */}
-      <div 
-        className="absolute left-0 right-0 hidden sm:flex" 
-        style={{ top: `${desktopTop}px`, height: `${desktopHeight}px` }}
+      <div
+        className="absolute left-0 right-0 flex"
+        style={{ top: `${topPosition}px`, height: `${frameHeight}px` }}
       >
         <div className="w-6 bg-black/70" />
         <div className="flex-1 relative rounded-2xl overflow-hidden">
@@ -338,13 +342,9 @@ const IDScannerFrame = ({ mobileTop, desktopTop, mobileHeight, desktopHeight, sc
       </div>
 
       {/* Bottom dark section */}
-      <div 
-        className="absolute left-0 right-0 bottom-0 bg-black/70 sm:hidden" 
-        style={{ top: `${mobileTop + mobileHeight}px` }}
-      />
-      <div 
-        className="absolute left-0 right-0 bottom-0 bg-black/70 hidden sm:block" 
-        style={{ top: `${desktopTop + desktopHeight}px` }}
+      <div
+        className="absolute left-0 right-0 bottom-0 bg-black/70"
+        style={{ top: `${topPosition + frameHeight}px` }}
       />
     </div>
   )
