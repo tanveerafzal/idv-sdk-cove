@@ -350,8 +350,16 @@ export async function completeVerification(
 // Document type mapping
 export const DOCUMENT_TYPES: Record<string, string> = {
   'drivers_license': 'DRIVERS_LICENSE',
-  'id_card': 'NATIONAL_ID',
+  'state_id': 'STATE_ID',
+  'photo_card': 'PHOTO_CARD',
+  'health_card': 'HEALTH_CARD',
   'passport': 'PASSPORT',
+  'passport_card': 'PASSPORT_CARD',
+  'permanent_resident': 'PERMANENT_RESIDENT_CARD',
+  'us_green_card': 'US_GREEN_CARD',
+  'work_permit': 'WORK_PERMIT',
+  'indian_status': 'INDIAN_STATUS',
+  'id_card': 'NATIONAL_ID',
 };
 
 // Get document type for API
