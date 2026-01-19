@@ -38,7 +38,7 @@ const SelfieCaptureOverlay = ({ onCapture, onClose }: SelfieCaptureOverlayProps)
     }
   }, [])
 
-  // Capture photo
+  // Capture photo - cropped to face oval area
   const handleCapture = useCallback(() => {
     if (!videoRef.current || !canvasRef.current) return
 
@@ -48,15 +48,74 @@ const SelfieCaptureOverlay = ({ onCapture, onClose }: SelfieCaptureOverlayProps)
 
     if (!ctx) return
 
-    canvas.width = video.videoWidth
-    canvas.height = video.videoHeight
+    const videoWidth = video.videoWidth
+    const videoHeight = video.videoHeight
+    const displayWidth = video.clientWidth
+    const displayHeight = video.clientHeight
 
-    // Mirror the image (selfie mode)
+    // Determine if mobile or desktop
+    const isMobile = window.innerWidth < 640
+
+    // Oval dimensions (matching the CSS)
+    const ovalWidth = isMobile ? 256 : 320  // w-64 or w-80
+    const ovalHeight = isMobile ? 320 : 384 // h-80 or h-96
+
+    // Oval position: centered horizontally, 60% up from center vertically
+    const ovalCenterX = displayWidth / 2
+    const ovalCenterY = displayHeight * 0.4 // 60% from top = 40% position
+
+    const ovalLeft = ovalCenterX - (ovalWidth / 2)
+    const ovalTop = ovalCenterY - (ovalHeight / 2)
+
+    // Handle object-cover scaling
+    const videoAspect = videoWidth / videoHeight
+    const displayAspect = displayWidth / displayHeight
+
+    let visibleWidth, visibleHeight, offsetX, offsetY
+
+    if (videoAspect > displayAspect) {
+      // Video is wider - cropped on sides
+      visibleHeight = videoHeight
+      visibleWidth = videoHeight * displayAspect
+      offsetX = (videoWidth - visibleWidth) / 2
+      offsetY = 0
+    } else {
+      // Video is taller - cropped on top/bottom
+      visibleWidth = videoWidth
+      visibleHeight = videoWidth / displayAspect
+      offsetX = 0
+      offsetY = (videoHeight - visibleHeight) / 2
+    }
+
+    // Scale from display to video coordinates
+    const scaleX = visibleWidth / displayWidth
+    const scaleY = visibleHeight / displayHeight
+
+    // Convert oval position to video coordinates
+    const cropX = offsetX + (ovalLeft * scaleX)
+    const cropY = offsetY + (ovalTop * scaleY)
+    const cropWidth = ovalWidth * scaleX
+    const cropHeight = ovalHeight * scaleY
+
+    // Account for mirroring - flip the X coordinate
+    const mirroredCropX = videoWidth - cropX - cropWidth
+
+    // Set canvas to crop dimensions
+    canvas.width = cropWidth
+    canvas.height = cropHeight
+
+    // Draw cropped and mirrored image
+    ctx.save()
     ctx.translate(canvas.width, 0)
     ctx.scale(-1, 1)
-    ctx.drawImage(video, 0, 0)
+    ctx.drawImage(
+      video,
+      mirroredCropX, cropY, cropWidth, cropHeight,  // Source (use mirrored X)
+      0, 0, cropWidth, cropHeight                    // Destination
+    )
+    ctx.restore()
 
-    const imageData = canvas.toDataURL('image/jpeg', 0.9)
+    const imageData = canvas.toDataURL('image/jpeg', 0.95)
     onCapture(imageData)
   }, [onCapture])
 
