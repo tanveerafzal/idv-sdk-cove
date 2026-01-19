@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { ChevronLeft } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
@@ -16,15 +16,6 @@ interface IDCaptureOverlayProps {
 const IDCaptureOverlay = ({ documentType, onCapture, onBack, videoRef, isBackSide = false }: IDCaptureOverlayProps) => {
   const [scannerOffset, setScannerOffset] = useState(0)
   const [showHelpModal, setShowHelpModal] = useState(false)
-  const [countdown, setCountdown] = useState<number | null>(null)
-  const [isStable, setIsStable] = useState(false)
-  const [statusMessage, setStatusMessage] = useState('Position document in frame')
-
-  // Refs for auto-capture
-  const previousFrameRef = useRef<ImageData | null>(null)
-  const stableCountRef = useRef(0)
-  const capturedRef = useRef(false)
-  const analysisCanvasRef = useRef<HTMLCanvasElement | null>(null)
 
   const getDocumentLabel = () => {
     const labels: Record<string, string> = {
@@ -48,89 +39,6 @@ const IDCaptureOverlay = ({ documentType, onCapture, onBack, videoRef, isBackSid
     }, 30)
     return () => clearInterval(interval)
   }, [])
-
-  // Auto-capture: Analyze frames for stability
-  const analyzeFrame = useCallback(() => {
-    if (!videoRef.current || capturedRef.current) return
-
-    const video = videoRef.current
-    if (video.readyState !== 4) return // Video not ready
-
-    // Create or reuse analysis canvas
-    if (!analysisCanvasRef.current) {
-      analysisCanvasRef.current = document.createElement('canvas')
-      analysisCanvasRef.current.width = 160 // Small size for faster analysis
-      analysisCanvasRef.current.height = 90
-    }
-
-    const canvas = analysisCanvasRef.current
-    const ctx = canvas.getContext('2d', { willReadFrequently: true })
-    if (!ctx) return
-
-    // Draw scaled down frame
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
-    const currentFrame = ctx.getImageData(0, 0, canvas.width, canvas.height)
-
-    if (previousFrameRef.current) {
-      // Compare frames to detect motion
-      let diff = 0
-      const data1 = previousFrameRef.current.data
-      const data2 = currentFrame.data
-      const pixelCount = data1.length / 4
-
-      for (let i = 0; i < data1.length; i += 4) {
-        // Compare RGB values (skip alpha)
-        diff += Math.abs(data1[i] - data2[i])     // R
-        diff += Math.abs(data1[i + 1] - data2[i + 1]) // G
-        diff += Math.abs(data1[i + 2] - data2[i + 2]) // B
-      }
-
-      const avgDiff = diff / (pixelCount * 3)
-      const isFrameStable = avgDiff < 8 // Threshold for stability
-
-      if (isFrameStable) {
-        stableCountRef.current++
-
-        if (stableCountRef.current >= 10 && !isStable) { // ~500ms of stability
-          setIsStable(true)
-          setStatusMessage('Hold steady...')
-          setCountdown(3)
-        }
-      } else {
-        stableCountRef.current = 0
-        if (isStable) {
-          setIsStable(false)
-          setCountdown(null)
-          setStatusMessage('Position document in frame')
-        }
-      }
-    }
-
-    previousFrameRef.current = currentFrame
-  }, [isStable, videoRef])
-
-  // Run frame analysis
-  useEffect(() => {
-    const interval = setInterval(analyzeFrame, 50) // 20 fps analysis
-    return () => clearInterval(interval)
-  }, [analyzeFrame])
-
-  // Countdown timer for auto-capture
-  useEffect(() => {
-    if (countdown === null || capturedRef.current) return
-
-    if (countdown === 0) {
-      capturedRef.current = true
-      handleCapture()
-      return
-    }
-
-    const timer = setTimeout(() => {
-      setCountdown(prev => (prev !== null ? prev - 1 : null))
-    }, 1000)
-
-    return () => clearTimeout(timer)
-  }, [countdown])
 
   const handleCapture = () => {
     if (videoRef.current) {
@@ -190,34 +98,18 @@ const IDCaptureOverlay = ({ documentType, onCapture, onBack, videoRef, isBackSid
         <h1 className="text-xl sm:text-lg font-semibold text-white">
           Place the <span className="text-emerald-400">{getDocumentLabel()}</span> in the frame
         </h1>
-        <p className={`text-sm mt-2 ${isStable ? 'text-emerald-400' : 'text-white/70'}`}>
-          {isStable ? statusMessage : 'Hold document close to fill the frame'}
+        <p className="text-sm mt-2 text-white/70">
+          Hold document close to fill the frame
         </p>
       </div>
-
-      {/* Countdown indicator */}
-      {countdown !== null && (
-        <div className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none">
-          <div className="w-24 h-24 rounded-full bg-black/50 flex items-center justify-center">
-            <span className="text-5xl font-bold text-white">{countdown}</span>
-          </div>
-        </div>
-      )}
 
       {/* Capture button */}
       <div className="absolute bottom-32 sm:bottom-16 left-0 right-0 flex justify-center z-10">
         <button
-          onClick={() => {
-            capturedRef.current = true
-            handleCapture()
-          }}
-          className={`w-20 h-20 sm:w-16 sm:h-16 rounded-full border-4 flex items-center justify-center transition-colors ${
-            isStable ? 'border-emerald-400' : 'border-white'
-          }`}
+          onClick={handleCapture}
+          className="w-20 h-20 sm:w-16 sm:h-16 rounded-full border-4 border-white flex items-center justify-center transition-transform hover:scale-105 active:scale-95"
         >
-          <div className={`w-16 h-16 sm:w-12 sm:h-12 rounded-full transition-colors ${
-            isStable ? 'bg-emerald-400' : 'bg-white'
-          }`} />
+          <div className="w-16 h-16 sm:w-12 sm:h-12 rounded-full bg-white" />
         </button>
       </div>
 
