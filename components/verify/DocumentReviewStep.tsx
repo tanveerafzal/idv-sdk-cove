@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { VerificationData } from '@/app/verify/page'
 
@@ -7,6 +8,42 @@ interface DocumentReviewStepProps {
   onBack: () => void
   updateData: (data: Partial<VerificationData>) => void
   error?: string | null
+}
+
+// Component to display document image with orientation-aware zoom
+function ZoomableDocumentImage({ src, alt }: { src: string; alt: string }) {
+  const [isPortrait, setIsPortrait] = useState(false)
+
+  useEffect(() => {
+    if (!src) return
+
+    const img = new Image()
+    img.onload = () => {
+      // Portrait if height > width
+      setIsPortrait(img.height > img.width)
+    }
+    img.src = src
+  }, [src])
+
+  // Portrait images (phone): less zoom, center focus
+  // Landscape images (laptop): more zoom, top focus
+  const zoomStyle = isPortrait
+    ? { transform: 'scale(1.15)', transformOrigin: 'center center' }
+    : { transform: 'scale(1.6)', transformOrigin: 'top center' }
+
+  return (
+    <div
+      className="rounded-lg overflow-hidden border border-gray-200 relative"
+      style={{ aspectRatio: '1.586 / 1' }}
+    >
+      <img
+        src={src}
+        alt={alt}
+        className="absolute inset-0 w-full h-full object-cover"
+        style={zoomStyle}
+      />
+    </div>
+  )
 }
 
 export default function DocumentReviewStep({
@@ -40,34 +77,20 @@ export default function DocumentReviewStep({
           {hasBackImage && (
             <p className="text-sm font-medium text-gray-700">Front</p>
           )}
-          <div
-            className="rounded-lg overflow-hidden border border-gray-200 relative"
-            style={{ aspectRatio: '1.586 / 1' }}
-          >
-            <img
-              src={data.documentFrontImage || ''}
-              alt="Document front"
-              className="absolute inset-0 w-full h-full object-cover object-top"
-              style={{ transform: 'scale(1.6)', transformOrigin: 'top center' }}
-            />
-          </div>
+          <ZoomableDocumentImage
+            src={data.documentFrontImage || ''}
+            alt="Document front"
+          />
         </div>
 
         {/* Back of document (if captured) - zoomed to show document area */}
         {hasBackImage && (
           <div className="space-y-2">
             <p className="text-sm font-medium text-gray-700">Back</p>
-            <div
-              className="rounded-lg overflow-hidden border border-gray-200 relative"
-              style={{ aspectRatio: '1.586 / 1' }}
-            >
-              <img
-                src={data.documentBackImage || ''}
-                alt="Document back"
-                className="absolute inset-0 w-full h-full object-cover object-top"
-                style={{ transform: 'scale(1.6)', transformOrigin: 'top center' }}
-              />
-            </div>
+            <ZoomableDocumentImage
+              src={data.documentBackImage || ''}
+              alt="Document back"
+            />
           </div>
         )}
 
