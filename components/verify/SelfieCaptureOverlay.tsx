@@ -56,16 +56,21 @@ const SelfieCaptureOverlay = ({ onCapture, onClose }: SelfieCaptureOverlayProps)
     // Determine if mobile or desktop
     const isMobile = window.innerWidth < 640
 
-    // Oval dimensions (matching the CSS)
+    // Oval dimensions (matching the CSS) with padding for context
     const ovalWidth = isMobile ? 256 : 320  // w-64 or w-80
     const ovalHeight = isMobile ? 320 : 384 // h-80 or h-96
 
-    // Oval position: centered horizontally, 60% up from center vertically
-    const ovalCenterX = displayWidth / 2
-    const ovalCenterY = displayHeight * 0.4 // 60% from top = 40% position
+    // Add padding around the oval (50% extra on each side)
+    const paddingMultiplier = 1.5
+    const captureWidth = ovalWidth * paddingMultiplier
+    const captureHeight = ovalHeight * paddingMultiplier
 
-    const ovalLeft = ovalCenterX - (ovalWidth / 2)
-    const ovalTop = ovalCenterY - (ovalHeight / 2)
+    // Capture area position: centered horizontally, 60% up from center vertically
+    const captureCenterX = displayWidth / 2
+    const captureCenterY = displayHeight * 0.4 // 60% from top = 40% position
+
+    const ovalLeft = captureCenterX - (captureWidth / 2)
+    const ovalTop = captureCenterY - (captureHeight / 2)
 
     // Handle object-cover scaling
     const videoAspect = videoWidth / videoHeight
@@ -91,11 +96,11 @@ const SelfieCaptureOverlay = ({ onCapture, onClose }: SelfieCaptureOverlayProps)
     const scaleX = visibleWidth / displayWidth
     const scaleY = visibleHeight / displayHeight
 
-    // Convert oval position to video coordinates
+    // Convert capture area position to video coordinates
     const cropX = offsetX + (ovalLeft * scaleX)
     const cropY = offsetY + (ovalTop * scaleY)
-    const cropWidth = ovalWidth * scaleX
-    const cropHeight = ovalHeight * scaleY
+    const cropWidth = captureWidth * scaleX
+    const cropHeight = captureHeight * scaleY
 
     // Account for mirroring - flip the X coordinate
     const mirroredCropX = videoWidth - cropX - cropWidth
