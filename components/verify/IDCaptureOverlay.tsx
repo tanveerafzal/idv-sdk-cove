@@ -138,68 +138,20 @@ const IDCaptureOverlay = ({ documentType, onCapture, onBack, videoRef, isBackSid
       const videoWidth = video.videoWidth
       const videoHeight = video.videoHeight
 
-      // Get the displayed video dimensions
-      const displayWidth = video.clientWidth
-      const displayHeight = video.clientHeight
-
-      // Determine if mobile or desktop based on window width
-      const isMobile = window.innerWidth < 640 // sm breakpoint
-
-      // Frame dimensions matching IDScannerFrame - reduced padding for larger capture area
-      const frameLeft = 12 // w-3 = 0.75rem = 12px (reduced from 24px for larger frame)
-      const frameWidth = displayWidth - (frameLeft * 2)
-      // ID card aspect ratio is ~1.586:1 (85.6mm x 54mm)
-      const idCardAspectRatio = 1.586
-      const frameHeight = frameWidth / idCardAspectRatio
-      const frameTop = isMobile ? 100 : 140 // moved higher for better positioning
-
-      // The video uses object-cover, so we need to calculate the actual visible area
-      const videoAspect = videoWidth / videoHeight
-      const displayAspect = displayWidth / displayHeight
-
-      let visibleWidth, visibleHeight, offsetX, offsetY
-
-      if (videoAspect > displayAspect) {
-        // Video is wider - it's cropped on sides
-        visibleHeight = videoHeight
-        visibleWidth = videoHeight * displayAspect
-        offsetX = (videoWidth - visibleWidth) / 2
-        offsetY = 0
-      } else {
-        // Video is taller - it's cropped on top/bottom
-        visibleWidth = videoWidth
-        visibleHeight = videoWidth / displayAspect
-        offsetX = 0
-        offsetY = (videoHeight - visibleHeight) / 2
-      }
-
-      // Calculate scale from display coordinates to visible video coordinates
-      const scaleX = visibleWidth / displayWidth
-      const scaleY = visibleHeight / displayHeight
-
-      // Convert frame position to video coordinates
-      const cropX = offsetX + (frameLeft * scaleX)
-      const cropY = offsetY + (frameTop * scaleY)
-      const cropWidth = frameWidth * scaleX
-      const cropHeight = frameHeight * scaleY
-
-      // Create canvas with the actual cropped dimensions (no forced aspect ratio)
+      // Capture full video frame at native resolution for maximum quality
+      // The frame overlay is just a positioning guide - backend will process the full image
       const canvas = document.createElement('canvas')
-      canvas.width = cropWidth
-      canvas.height = cropHeight
+      canvas.width = videoWidth
+      canvas.height = videoHeight
 
       const ctx = canvas.getContext('2d')
       if (ctx) {
-        // Enable image smoothing for better quality
-        ctx.imageSmoothingEnabled = true
-        ctx.imageSmoothingQuality = 'high'
+        // Disable smoothing to preserve sharpness at native resolution
+        ctx.imageSmoothingEnabled = false
 
-        // Draw the cropped region at native resolution
-        ctx.drawImage(
-          video,
-          cropX, cropY, cropWidth, cropHeight,  // Source rectangle
-          0, 0, cropWidth, cropHeight            // Destination rectangle (same size)
-        )
+        // Draw full video frame at native resolution
+        ctx.drawImage(video, 0, 0, videoWidth, videoHeight)
+
         // Use maximum JPEG quality for best OCR results
         const base64String = canvas.toDataURL('image/jpeg', 1.0)
         onCapture(base64String)
@@ -219,8 +171,8 @@ const IDCaptureOverlay = ({ documentType, onCapture, onBack, videoRef, isBackSid
       />
 
      <IDScannerFrame
-  mobileTop={100}
-  desktopTop={140}
+  mobileTop={90}
+  desktopTop={120}
   scannerOffset={scannerOffset}
 />
 
@@ -239,7 +191,7 @@ const IDCaptureOverlay = ({ documentType, onCapture, onBack, videoRef, isBackSid
           Place the <span className="text-emerald-400">{getDocumentLabel()}</span> in the frame
         </h1>
         <p className={`text-sm mt-2 ${isStable ? 'text-emerald-400' : 'text-white/70'}`}>
-          {statusMessage}
+          {isStable ? statusMessage : 'Hold document close to fill the frame'}
         </p>
       </div>
 
@@ -322,7 +274,7 @@ const IDScannerFrame = ({ mobileTop, desktopTop, scannerOffset }: IDScannerFrame
     const calculateFrameHeight = () => {
       // ID card aspect ratio is ~1.586:1 (85.6mm x 54mm)
       const idCardAspectRatio = 1.586
-      const frameWidth = window.innerWidth - 24 // 12px padding on each side (reduced for larger frame)
+      const frameWidth = window.innerWidth - 16 // 8px padding on each side (minimal for maximum frame size)
       const calculatedHeight = frameWidth / idCardAspectRatio
       setFrameHeight(calculatedHeight)
     }
@@ -348,7 +300,7 @@ const IDScannerFrame = ({ mobileTop, desktopTop, scannerOffset }: IDScannerFrame
         className="absolute left-0 right-0 flex"
         style={{ top: `${topPosition}px`, height: `${frameHeight}px` }}
       >
-        <div className="w-3 bg-black/70" />
+        <div className="w-2 bg-black/70" />
         <div className="flex-1 relative rounded-2xl overflow-hidden">
           <CornerBrackets />
           <div
@@ -356,7 +308,7 @@ const IDScannerFrame = ({ mobileTop, desktopTop, scannerOffset }: IDScannerFrame
             style={{ top: `${scannerOffset}%` }}
           />
         </div>
-        <div className="w-3 bg-black/70" />
+        <div className="w-2 bg-black/70" />
       </div>
 
       {/* Bottom dark section */}

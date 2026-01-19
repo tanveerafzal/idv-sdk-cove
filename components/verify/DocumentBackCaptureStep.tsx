@@ -76,8 +76,8 @@ export default function DocumentBackCaptureStep({
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: 'environment',
-          width: { ideal: 1920, min: 1280 },
-          height: { ideal: 1080, min: 720 },
+          width: { ideal: 3840, min: 1280 },
+          height: { ideal: 2160, min: 720 },
         }
       })
       streamRef.current = stream
