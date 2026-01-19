@@ -347,24 +347,49 @@ export async function completeVerification(
   }
 }
 
-// Document type mapping
-export const DOCUMENT_TYPES: Record<string, string> = {
-  'drivers_license': 'DRIVERS_LICENSE',
-  'state_id': 'STATE_ID',
-  'photo_card': 'PHOTO_CARD',
-  'health_card': 'HEALTH_CARD',
-  'passport': 'PASSPORT',
-  'passport_card': 'PASSPORT_CARD',
-  'permanent_resident': 'PERMANENT_RESIDENT_CARD',
-  'us_green_card': 'US_GREEN_CARD',
-  'work_permit': 'WORK_PERMIT',
-  'indian_status': 'INDIAN_STATUS',
-  'id_card': 'NATIONAL_ID',
+// Country-specific document type mappings based on backend API
+const US_DOCUMENT_TYPES: Record<string, string> = {
+  'drivers_license': 'US_DRIVERS_LICENSE',
+  'passport': 'US_PASSPORT',
+  'state_id': 'US_STATE_ID',
+  'passport_card': 'US_PASSPORT', // No specific type, using US_PASSPORT
+  'us_green_card': 'GREEN_CARD',
+  'work_permit': 'RESIDENCE_PERMIT',
 };
 
-// Get document type for API
-export function getApiDocumentType(uiDocumentType: string): string {
-  return DOCUMENT_TYPES[uiDocumentType] || 'OTHER';
+const CA_DOCUMENT_TYPES: Record<string, string> = {
+  'drivers_license': 'CA_DRIVERS_LICENSE',
+  'passport': 'CA_PASSPORT',
+  'photo_card': 'NATIONAL_ID', // No specific type, using NATIONAL_ID
+  'health_card': 'CA_HEALTH_CARD',
+  'permanent_resident': 'PERMANENT_RESIDENT_CARD',
+  'indian_status': 'CA_INDIAN_STATUS_CARD',
+};
+
+const GENERIC_DOCUMENT_TYPES: Record<string, string> = {
+  'drivers_license': 'DRIVERS_LICENSE',
+  'passport': 'PASSPORT',
+  'id_card': 'NATIONAL_ID',
+  'health_card': 'HEALTH_CARD',
+  'permanent_resident': 'PERMANENT_RESIDENT_CARD',
+};
+
+// Get document type for API based on country
+export function getApiDocumentType(uiDocumentType: string, country?: string): string {
+  const countryLower = country?.toLowerCase() || '';
+
+  // Check for US
+  if (countryLower === 'united states' || countryLower === 'united states of america' || countryLower === 'usa' || countryLower === 'us') {
+    return US_DOCUMENT_TYPES[uiDocumentType] || 'OTHER';
+  }
+
+  // Check for Canada
+  if (countryLower === 'canada') {
+    return CA_DOCUMENT_TYPES[uiDocumentType] || 'OTHER';
+  }
+
+  // Generic/other countries
+  return GENERIC_DOCUMENT_TYPES[uiDocumentType] || 'OTHER';
 }
 
 /**

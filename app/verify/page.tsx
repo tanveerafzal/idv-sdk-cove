@@ -249,7 +249,7 @@ function VerifyPageContent() {
     try {
       // Step 1: Upload front document
       setProcessingStatus('Analyzing your document...')
-      const documentType = getApiDocumentType(verificationData.documentType)
+      const documentType = getApiDocumentType(verificationData.documentType, verificationData.country)
       await uploadDocument(
         verificationId,
         verificationData.documentFrontImage,
