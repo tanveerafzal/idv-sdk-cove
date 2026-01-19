@@ -1,4 +1,3 @@
-import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { VerificationData } from '@/app/verify/page'
 
@@ -8,50 +7,6 @@ interface DocumentReviewStepProps {
   onBack: () => void
   updateData: (data: Partial<VerificationData>) => void
   error?: string | null
-}
-
-// Component to display document image with orientation-aware display
-function ZoomableDocumentImage({ src, alt }: { src: string; alt: string }) {
-  const [isPortrait, setIsPortrait] = useState<boolean | null>(null)
-
-  useEffect(() => {
-    if (!src) return
-
-    const img = new Image()
-    img.onload = () => {
-      // Portrait if height > width
-      setIsPortrait(img.height > img.width)
-    }
-    img.src = src
-  }, [src])
-
-  // Portrait images (phone): show full image without cropping
-  if (isPortrait) {
-    return (
-      <div className="rounded-lg overflow-hidden border border-gray-200">
-        <img
-          src={src}
-          alt={alt}
-          className="w-full h-auto"
-        />
-      </div>
-    )
-  }
-
-  // Landscape images (laptop): zoom and crop to show document area
-  return (
-    <div
-      className="rounded-lg overflow-hidden border border-gray-200 relative"
-      style={{ aspectRatio: '1.586 / 1' }}
-    >
-      <img
-        src={src}
-        alt={alt}
-        className="absolute inset-0 w-full h-full object-cover"
-        style={{ transform: 'scale(1.6)', transformOrigin: 'top center' }}
-      />
-    </div>
-  )
 }
 
 export default function DocumentReviewStep({
@@ -80,25 +35,31 @@ export default function DocumentReviewStep({
           <p className="text-sm text-gray-600">Make sure all text is clear and readable</p>
         </div>
 
-        {/* Front of document - zoomed to show document area */}
+        {/* Front of document */}
         <div className="space-y-2">
           {hasBackImage && (
             <p className="text-sm font-medium text-gray-700">Front</p>
           )}
-          <ZoomableDocumentImage
-            src={data.documentFrontImage || ''}
-            alt="Document front"
-          />
+          <div className="rounded-lg overflow-hidden border border-gray-200">
+            <img
+              src={data.documentFrontImage || ''}
+              alt="Document front"
+              className="w-full"
+            />
+          </div>
         </div>
 
-        {/* Back of document (if captured) - zoomed to show document area */}
+        {/* Back of document (if captured) */}
         {hasBackImage && (
           <div className="space-y-2">
             <p className="text-sm font-medium text-gray-700">Back</p>
-            <ZoomableDocumentImage
-              src={data.documentBackImage || ''}
-              alt="Document back"
-            />
+            <div className="rounded-lg overflow-hidden border border-gray-200">
+              <img
+                src={data.documentBackImage || ''}
+                alt="Document back"
+                className="w-full"
+              />
+            </div>
           </div>
         )}
 
