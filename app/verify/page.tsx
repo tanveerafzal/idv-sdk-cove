@@ -406,13 +406,14 @@ function VerifyPageContent() {
         errorMsg.toLowerCase().includes('upload a government-issued id')
 
       if (isDocumentError) {
-        // Go back to document capture page and clear document images
+        // Go back to document select page and clear document images
         setVerificationData(prev => ({
           ...prev,
+          documentType: '',
           documentFrontImage: null,
           documentBackImage: null,
         }))
-        setCurrentStep(3) // Document capture page
+        setCurrentStep(2) // Select ID type page
         return
       }
 
