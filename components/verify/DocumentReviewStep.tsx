@@ -25,10 +25,10 @@ function ZoomableDocumentImage({ src, alt }: { src: string; alt: string }) {
     img.src = src
   }, [src])
 
-  // Portrait images (phone): less zoom, center focus
+  // Portrait images (phone): minimal zoom, top focus to show document
   // Landscape images (laptop): more zoom, top focus
   const zoomStyle = isPortrait
-    ? { transform: 'scale(1.15)', transformOrigin: 'center center' }
+    ? { transform: 'scale(1.0)', transformOrigin: 'top center' }
     : { transform: 'scale(1.6)', transformOrigin: 'top center' }
 
   return (
