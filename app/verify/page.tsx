@@ -510,6 +510,13 @@ function VerifyPageContent() {
               </div>
             </div>
 
+            {/* Mobile device recommendation */}
+            <div className="mt-8 p-3 bg-blue-50 rounded-lg border border-blue-100">
+              <p className="text-xs text-blue-700 text-center">
+                For best results, use a mobile device with a good camera.
+              </p>
+            </div>
+
             <div className="mt-auto pb-6">
               <div className="space-y-4">
                 <p className="text-xs text-gray-500 text-center">
