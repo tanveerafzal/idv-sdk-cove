@@ -43,35 +43,16 @@ const IDCaptureOverlay = ({ documentType, onCapture, onBack, videoRef, isBackSid
   const handleCapture = () => {
     if (videoRef.current) {
       const video = videoRef.current
-      const videoWidth = video.videoWidth
-      const videoHeight = video.videoHeight
-
-      // Crop to center 55% of the frame to focus on the document area
-      // This removes excess background and makes the document larger
-      const cropPercent = 0.55
-      const cropWidth = videoWidth * cropPercent
-      const cropHeight = videoHeight * cropPercent
-      const cropX = (videoWidth - cropWidth) / 2
-      const cropY = (videoHeight - cropHeight) / 4 // Position higher to capture card at top of frame
-
       const canvas = document.createElement('canvas')
-      canvas.width = cropWidth
-      canvas.height = cropHeight
+
+      // Capture full frame at native resolution
+      canvas.width = video.videoWidth
+      canvas.height = video.videoHeight
 
       const ctx = canvas.getContext('2d')
       if (ctx) {
-        ctx.imageSmoothingEnabled = true
-        ctx.imageSmoothingQuality = 'high'
-
-        // Draw cropped area at native resolution
-        ctx.drawImage(
-          video,
-          cropX, cropY, cropWidth, cropHeight,  // Source (cropped area)
-          0, 0, cropWidth, cropHeight            // Destination
-        )
-
-        // Use maximum JPEG quality for best OCR results
-        const base64String = canvas.toDataURL('image/jpeg', 1.0)
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+        const base64String = canvas.toDataURL('image/jpeg', 0.92)
         onCapture(base64String)
       }
     }
@@ -176,7 +157,7 @@ const IDScannerFrame = ({ mobileTop, desktopTop, scannerOffset }: IDScannerFrame
     const calculateFrameHeight = () => {
       // ID card aspect ratio is ~1.586:1 (85.6mm x 54mm)
       const idCardAspectRatio = 1.586
-      const frameWidth = window.innerWidth - 16 // 8px padding on each side (minimal for maximum frame size)
+      const frameWidth = window.innerWidth - 48 // 24px padding on each side
       const calculatedHeight = frameWidth / idCardAspectRatio
       setFrameHeight(calculatedHeight)
     }
@@ -202,7 +183,7 @@ const IDScannerFrame = ({ mobileTop, desktopTop, scannerOffset }: IDScannerFrame
         className="absolute left-0 right-0 flex"
         style={{ top: `${topPosition}px`, height: `${frameHeight}px` }}
       >
-        <div className="w-2 bg-black/70" />
+        <div className="w-6 bg-black/70" />
         <div className="flex-1 relative rounded-2xl overflow-hidden">
           <CornerBrackets />
           <div
@@ -210,7 +191,7 @@ const IDScannerFrame = ({ mobileTop, desktopTop, scannerOffset }: IDScannerFrame
             style={{ top: `${scannerOffset}%` }}
           />
         </div>
-        <div className="w-2 bg-black/70" />
+        <div className="w-6 bg-black/70" />
       </div>
 
       {/* Bottom dark section */}
