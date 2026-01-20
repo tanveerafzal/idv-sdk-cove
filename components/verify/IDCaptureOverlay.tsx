@@ -168,22 +168,25 @@ const IDScannerFrame = ({ mobileTop, desktopTop, scannerOffset }: IDScannerFrame
     const calculateFrameDimensions = () => {
       // ID card aspect ratio is ~1.586:1 (85.6mm x 54mm)
       const idCardAspectRatio = 1.586
-      const screenWidth = window.innerWidth
-      const mobile = screenWidth < 640
+      const containerWidth = window.innerWidth
+      // Use screen.width to detect actual device, not iframe/container size
+      const actualScreenWidth = window.screen.width
+      const mobile = actualScreenWidth < 768
       setIsMobile(mobile)
 
       let width: number
       if (mobile) {
-        // Mobile: use full width minus padding
-        width = screenWidth - 48
+        // Mobile: use full container width minus padding
+        width = containerWidth - 48
       } else {
-        // Desktop: limit max width to 420px so document can fill the frame easier
+        // Desktop: limit max width to 320px so document can fill the frame easier
         // This makes it easier to capture readable documents on webcams
-        width = Math.min(screenWidth - 48, 420)
+        width = Math.min(containerWidth - 48, 320)
       }
 
       console.log('[IDScannerFrame] Device detection:', {
-        screenWidth,
+        containerWidth,
+        actualScreenWidth,
         isMobile: mobile,
         device: mobile ? 'MOBILE' : 'DESKTOP',
         frameWidth: width,
