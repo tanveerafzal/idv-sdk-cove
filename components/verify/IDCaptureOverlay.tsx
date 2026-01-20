@@ -16,6 +16,13 @@ interface IDCaptureOverlayProps {
 const IDCaptureOverlay = ({ documentType, onCapture, onBack, videoRef, isBackSide = false }: IDCaptureOverlayProps) => {
   const [scannerOffset, setScannerOffset] = useState(0)
   const [showHelpModal, setShowHelpModal] = useState(false)
+  const [isDesktop, setIsDesktop] = useState(false)
+
+  // Detect actual device type using screen width (not iframe/container width)
+  useEffect(() => {
+    const actualScreenWidth = window.screen.width
+    setIsDesktop(actualScreenWidth >= 768)
+  }, [])
 
   const getDocumentLabel = () => {
     const labels: Record<string, string> = {
@@ -92,14 +99,11 @@ const IDCaptureOverlay = ({ documentType, onCapture, onBack, videoRef, isBackSid
       </div>
 
       {/* Hint text inside frame */}
-      <div className="absolute left-6 right-6 z-10 flex justify-center" style={{ top: 'calc(90px + 20px)' }}>
-        <p className="text-sm text-white/70 text-center sm:hidden">
-          Hold document close to fill the frame
-        </p>
-      </div>
-      <div className="absolute left-6 right-6 z-10 justify-center hidden sm:flex" style={{ top: 'calc(120px + 20px)' }}>
+      <div className="absolute left-6 right-6 z-10 flex justify-center" style={{ top: isDesktop ? 'calc(120px + 20px)' : 'calc(90px + 20px)' }}>
         <p className="text-sm text-white/70 text-center">
-          Hold document close to fill the frame
+          {isDesktop
+            ? 'Bring document closer to camera for better quality'
+            : 'Hold document close to fill the frame'}
         </p>
       </div>
 
