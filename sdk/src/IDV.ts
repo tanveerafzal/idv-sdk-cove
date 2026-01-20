@@ -165,9 +165,9 @@ export class IDVCore {
       console.info('[IDV baseUrl] ',this.config?.baseUrl);
 
     if (this.config!.environment === 'sandbox') {
-      return 'http://localhost:3000';
+      return 'https://sdk-test.trustcredo.com';
     }
-    return 'http://localhost:3000';
+    return 'https://sdk.trustcredo.com';
   }
 
   private getVerifyOrigin(): string {
