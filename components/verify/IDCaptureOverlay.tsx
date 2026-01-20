@@ -182,6 +182,14 @@ const IDScannerFrame = ({ mobileTop, desktopTop, scannerOffset }: IDScannerFrame
         width = Math.min(screenWidth - 48, 420)
       }
 
+      console.log('[IDScannerFrame] Device detection:', {
+        screenWidth,
+        isMobile: mobile,
+        device: mobile ? 'MOBILE' : 'DESKTOP',
+        frameWidth: width,
+        frameHeight: width / idCardAspectRatio
+      })
+
       setFrameWidth(width)
       setFrameHeight(width / idCardAspectRatio)
     }
