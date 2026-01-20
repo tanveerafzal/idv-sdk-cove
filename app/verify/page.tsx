@@ -311,16 +311,22 @@ function VerifyPageContent() {
         //     })
         // }
 
+        // Determine specific error message
+        const isDocumentExpired = result.checks?.documentExpired === true
+        const errorMessage = isDocumentExpired
+          ? 'Your document has expired. Please use a valid, non-expired document.'
+          : (result.message || 'Verification failed. Please try again.')
+
         // Send retry event to SDK
         sendSDKMessage('IDV_ERROR', {
-          code: 'VERIFICATION_FAILED',
-          message: result.message || 'Verification failed. Please try again.',
+          code: isDocumentExpired ? 'DOCUMENT_EXPIRED' : 'VERIFICATION_FAILED',
+          message: errorMessage,
           recoverable: true,
           remainingRetries: result.remainingRetries,
         })
 
         // Set error message and allow retry
-        setError(result.message || 'Verification failed. Please try again with clearer images.')
+        setError(errorMessage)
         setCurrentStep(2) // Go back to document selection to retry
         setVerificationData({
           country: verificationData.country,

@@ -36,12 +36,20 @@ export default function CompleteStep({ result, onRetry, onClose, partnerInfo }: 
 
     // Failed verification
     const retriesExhausted = result.remainingRetries === 0 || result.canRetry === false
-    const message = retriesExhausted
-      ? 'All verification attempts have been used. Please contact support if you need assistance.'
-      : result.message || 'We were unable to verify your identity. Please try again with clearer photos.'
+    const isDocumentExpired = result.checks?.documentExpired === true
+
+    let message: string
+    if (isDocumentExpired) {
+      message = 'Your document has expired. Please use a valid, non-expired document.'
+    } else if (retriesExhausted) {
+      message = 'All verification attempts have been used. Please contact support if you need assistance.'
+    } else {
+      message = result.message || 'We were unable to verify your identity. Please try again with clearer photos.'
+    }
+
     return {
       icon: <XCircle className="w-16 h-16 text-red-500" />,
-      title: retriesExhausted ? 'Verification Unsuccessful' : 'Verification Failed',
+      title: isDocumentExpired ? 'Document Expired' : (retriesExhausted ? 'Verification Unsuccessful' : 'Verification Failed'),
       description: message,
       bgColor: 'bg-red-100',
     }
