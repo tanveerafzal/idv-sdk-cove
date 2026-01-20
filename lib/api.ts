@@ -207,6 +207,27 @@ export async function createVerification(
 }
 
 /**
+ * Detect if the current device is mobile
+ * Mobile devices typically have better cameras, so we use cheaper OCR models
+ * Desktop devices use more expensive models for better accuracy with lower quality webcams
+ */
+function isMobileDevice(): boolean {
+  if (typeof window === 'undefined') return false;
+
+  // Only use user agent detection - window width is unreliable (modal can be narrow on desktop)
+  const mobileUserAgentPattern = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i;
+  const isMobile = mobileUserAgentPattern.test(navigator.userAgent);
+
+  console.log('[API] Device detection:', {
+    userAgent: navigator.userAgent.substring(0, 80) + '...',
+    isMobile,
+    reason: isMobile ? 'Mobile user agent detected' : 'Desktop user agent'
+  });
+
+  return isMobile;
+}
+
+/**
  * 6. Upload document
  */
 export async function uploadDocument(
@@ -226,6 +247,19 @@ export async function uploadDocument(
   formData.append('document', file);
   formData.append('documentType', documentType);
   formData.append('side', side);
+
+  // Pass device type for model selection (mobile = better camera = cheaper model)
+  const deviceType = isMobileDevice() ? 'mobile' : 'desktop';
+  formData.append('deviceType', deviceType);
+
+  console.log('[API] uploadDocument - deviceType:', deviceType);
+  console.log('[API] uploadDocument - FormData contents:', {
+    documentType,
+    side,
+    deviceType,
+    fileSize: file.size,
+    fileName: file.name
+  });
 
   const url = partnerId
     ? getApiUrl(`/api/verifications/${verificationId}/documents?partnerId=${partnerId}`)
@@ -294,6 +328,7 @@ export async function submitVerification(
 
   console.log('[API] submitVerification - URL:', url);
   console.log('[API] submitVerification - referenceId:', referenceId || 'NOT PROVIDED');
+  console.log('[API] submitVerification - Note: deviceType not sent (OCR already done during document upload)');
 
   const response = await fetch(url, {
     method: 'POST',

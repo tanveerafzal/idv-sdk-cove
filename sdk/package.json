@@ -1,7 +1,7 @@
 {
-  "name": "@anthropic/idv-sdk",
+  "name": "@trustcredo/idv-sdk",
   "version": "1.0.0",
-  "description": "Identity Verification SDK for embedding verification flows",
+  "description": "TrustCredo Identity Verification SDK for embedding verification flows into web applications",
   "type": "module",
   "main": "dist/idv.min.js",
   "module": "dist/idv.esm.js",

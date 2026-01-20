@@ -1,7 +1,7 @@
 /**
- * IDV SDK - Identity Verification SDK
+ * TrustCredo Identity Verification SDK
  *
- * Usage:
+ * Usage with CDN:
  * ```html
  * <script src="https://cdn.trustcredo.com/sdk/v1/idv.min.js"></script>
  * <script>
@@ -10,11 +10,14 @@
  * </script>
  * ```
  *
- * Or with ES modules:
+ * Usage with ES modules:
  * ```javascript
- * import { IDV } from '@anthropic/idv-sdk';
+ * import { IDV } from '@trustcredo/idv-sdk';
  * IDV.init({ apiKey: 'pk_live_...' });
+ * const result = await IDV.start({ user: { id: 'user_123' } });
  * ```
+ *
+ * See README.md for full documentation.
  */
 
 import { IDV, IDVCore } from './IDV';

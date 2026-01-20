@@ -46,19 +46,29 @@ const IDCaptureOverlay = ({ documentType, onCapture, onBack, videoRef, isBackSid
       const videoWidth = video.videoWidth
       const videoHeight = video.videoHeight
 
-      // Capture full video frame at native resolution for maximum quality
-      // The frame overlay is just a positioning guide - backend will process the full image
+      // Crop to center 55% of the frame to focus on the document area
+      // This removes excess background and makes the document larger
+      const cropPercent = 0.55
+      const cropWidth = videoWidth * cropPercent
+      const cropHeight = videoHeight * cropPercent
+      const cropX = (videoWidth - cropWidth) / 2
+      const cropY = (videoHeight - cropHeight) / 4 // Position higher to capture card at top of frame
+
       const canvas = document.createElement('canvas')
-      canvas.width = videoWidth
-      canvas.height = videoHeight
+      canvas.width = cropWidth
+      canvas.height = cropHeight
 
       const ctx = canvas.getContext('2d')
       if (ctx) {
-        // Disable smoothing to preserve sharpness at native resolution
-        ctx.imageSmoothingEnabled = false
+        ctx.imageSmoothingEnabled = true
+        ctx.imageSmoothingQuality = 'high'
 
-        // Draw full video frame at native resolution
-        ctx.drawImage(video, 0, 0, videoWidth, videoHeight)
+        // Draw cropped area at native resolution
+        ctx.drawImage(
+          video,
+          cropX, cropY, cropWidth, cropHeight,  // Source (cropped area)
+          0, 0, cropWidth, cropHeight            // Destination
+        )
 
         // Use maximum JPEG quality for best OCR results
         const base64String = canvas.toDataURL('image/jpeg', 1.0)
