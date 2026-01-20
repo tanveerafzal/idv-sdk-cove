@@ -179,9 +179,9 @@ const IDScannerFrame = ({ mobileTop, desktopTop, scannerOffset }: IDScannerFrame
         // Mobile: use full container width minus padding
         width = containerWidth - 48
       } else {
-        // Desktop: use nearly full container width (minimal 8px padding)
-        // Larger frame allows document to be much closer to webcam for better quality
-        width = containerWidth - 8
+        // Desktop: use full container width (no padding)
+        // Maximum frame size allows document to be as close as possible to webcam
+        width = containerWidth
       }
 
       console.log('[IDScannerFrame] Device detection:', {
