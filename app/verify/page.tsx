@@ -35,7 +35,6 @@ import {
   type VerificationResult,
   type PartnerInfo,
 } from '@/lib/api'
-
 export type VerificationStep = 1 | 2 | 3 | 3.5 | 4 | 5 | 6 | 7 | 7.5 | 8
 
 export interface VerificationData {
@@ -358,41 +357,19 @@ function VerifyPageContent() {
         duration: Date.now() - startTime,
       })
 
-      // Send webhook to partner - DISABLED (webhook sent from backend)
-      // console.log('[Webhook] Checking webhook conditions:', {
-      //   hasPartnerInfo: !!partnerInfo,
-      //   webhookUrl: partnerInfo?.webhookUrl,
-      //   partnerId,
-      //   userId,
-      //   verificationId,
-      //   resultPassed: result.passed,
-      // })
-
-      // if (partnerInfo?.webhookUrl && partnerId) {
-      //   console.log('[Webhook] Sending webhook to:', partnerInfo.webhookUrl)
-      //   console.log('[Webhook] referenceId (userId):', userId)
-      //   sendWebhook({
-      //     webhookUrl: partnerInfo.webhookUrl,
-      //     verificationId,
-      //     partnerId,
-      //     referenceId: userId || undefined,
-      //     result,
-      //     extractedData: result.extractedData,
-      //     source: sdkMode ? 'sdk' : 'web-flow',
-      //     duration: Date.now() - startTime,
-      //   })
-      //     .then((response) => {
-      //       console.log('[Webhook] Delivery response:', response)
-      //     })
-      //     .catch((err) => {
-      //       console.error('[Webhook] Delivery failed:', err)
-      //     })
-      // } else {
-      //   console.log('[Webhook] Skipped - missing webhookUrl or partnerId')
-      // }
-
-      // Move to complete step
-      setCurrentStep(8)
+      // Close the window after verification complete
+      // Small delay to ensure SDK message is sent
+      setTimeout(() => {
+        if (sdkMode) {
+          // Send close message to parent
+          sendSDKMessage('IDV_CLOSE', {
+            verificationId,
+            status: result.passed ? 'passed' : 'failed',
+          })
+        }
+        // Try to close the window
+        window.close()
+      }, 500)
     } catch (err) {
       console.error('Verification submission error:', err)
       const errorMsg = err instanceof Error ? err.message : 'Verification failed'
