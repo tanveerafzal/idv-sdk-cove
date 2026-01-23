@@ -76,12 +76,12 @@ export default function DocumentCaptureStep({
       // Start transition first - show component but with opacity 0
       setIsCapturing(true)
       
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { 
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
           facingMode: 'environment',
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
-        } 
+          width: { ideal: 3840, min: 1280 },
+          height: { ideal: 2160, min: 720 },
+        }
       })
       streamRef.current = stream
       if (videoRef.current) {
@@ -106,8 +106,11 @@ export default function DocumentCaptureStep({
       canvas.height = videoRef.current.videoHeight
       const ctx = canvas.getContext('2d')
       if (ctx) {
+        ctx.imageSmoothingEnabled = true
+        ctx.imageSmoothingQuality = 'high'
         ctx.drawImage(videoRef.current, 0, 0)
-        const base64String = canvas.toDataURL('image/jpeg')
+        // Use maximum JPEG quality for best OCR results
+        const base64String = canvas.toDataURL('image/jpeg', 1.0)
         setCapturedImage(base64String)
         updateData({ documentFrontImage: base64String })
         stopCamera()

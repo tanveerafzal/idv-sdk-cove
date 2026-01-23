@@ -249,7 +249,7 @@ function VerifyPageContent() {
     try {
       // Step 1: Upload front document
       setProcessingStatus('Analyzing your document...')
-      const documentType = getApiDocumentType(verificationData.documentType)
+      const documentType = getApiDocumentType(verificationData.documentType, verificationData.country)
       await uploadDocument(
         verificationId,
         verificationData.documentFrontImage,
@@ -311,16 +311,22 @@ function VerifyPageContent() {
         //     })
         // }
 
+        // Determine specific error message
+        const isDocumentExpired = result.checks?.documentExpired === true
+        const errorMessage = isDocumentExpired
+          ? 'Your document has expired. Please use a valid, non-expired document.'
+          : (result.message || 'Verification failed. Please try again.')
+
         // Send retry event to SDK
         sendSDKMessage('IDV_ERROR', {
-          code: 'VERIFICATION_FAILED',
-          message: result.message || 'Verification failed. Please try again.',
+          code: isDocumentExpired ? 'DOCUMENT_EXPIRED' : 'VERIFICATION_FAILED',
+          message: errorMessage,
           recoverable: true,
           remainingRetries: result.remainingRetries,
         })
 
         // Set error message and allow retry
-        setError(result.message || 'Verification failed. Please try again with clearer images.')
+        setError(errorMessage)
         setCurrentStep(2) // Go back to document selection to retry
         setVerificationData({
           country: verificationData.country,
@@ -399,43 +405,27 @@ function VerifyPageContent() {
         recoverable: true,
       })
 
-      // Send webhook for failure case - DISABLED (webhook sent from backend)
-      // console.log('[Webhook] Verification failed, checking webhook for failure notification')
-      // if (partnerInfo?.webhookUrl && partnerId && verificationId) {
-      //   console.log('[Webhook] Sending failure webhook to:', partnerInfo.webhookUrl)
-      //   console.log('[Webhook] referenceId (userId):', userId)
-      //   sendWebhook({
-      //     webhookUrl: partnerInfo.webhookUrl,
-      //     verificationId,
-      //     partnerId,
-      //     referenceId: userId || undefined,
-      //     result: {
-      //       passed: false,
-      //       score: 0,
-      //       riskLevel: 'HIGH',
-      //       message: errorMsg,
-      //       checks: {
-      //         documentAuthentic: false,
-      //         documentExpired: false,
-      //         documentTampered: false,
-      //       },
-      //       extractedData: {},
-      //       flags: [],
-      //       warnings: [],
-      //       canRetry: true,
-      //     },
-      //     source: sdkMode ? 'sdk' : 'web-flow',
-      //     duration: Date.now() - startTime,
-      //   })
-      //     .then((response) => {
-      //       console.log('[Webhook] Failure webhook response:', response)
-      //     })
-      //     .catch((webhookErr) => {
-      //       console.error('[Webhook] Failure webhook delivery failed:', webhookErr)
-      //     })
-      // }
+      // Check if error is related to invalid/missing document
+      const isDocumentError = errorMsg.toLowerCase().includes('no valid id document') ||
+        errorMsg.toLowerCase().includes('document not found') ||
+        errorMsg.toLowerCase().includes('invalid document') ||
+        errorMsg.toLowerCase().includes('upload a government-issued id') ||
+        errorMsg.toLowerCase().includes('unable to extract') ||
+        errorMsg.toLowerCase().includes('upload a clearer image')
 
-      // Go back to selfie review to allow retry
+      if (isDocumentError) {
+        // Go back to document select page and clear document images
+        setVerificationData(prev => ({
+          ...prev,
+          documentType: '',
+          documentFrontImage: null,
+          documentBackImage: null,
+        }))
+        setCurrentStep(2) // Select ID type page
+        return
+      }
+
+      // Go back to selfie review to allow retry for other errors
       setCurrentStep(7)
     }
   }
@@ -524,6 +514,13 @@ function VerifyPageContent() {
                   </p>
                 </div>
               </div>
+            </div>
+
+            {/* Mobile device recommendation */}
+            <div className="mt-8 p-3 bg-blue-50 rounded-lg border border-blue-100">
+              <p className="text-xs text-blue-700 text-center">
+                For best results, use a mobile device with a good camera.
+              </p>
             </div>
 
             <div className="mt-auto pb-6">

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { ChevronLeft } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
@@ -16,6 +16,13 @@ interface IDCaptureOverlayProps {
 const IDCaptureOverlay = ({ documentType, onCapture, onBack, videoRef, isBackSide = false }: IDCaptureOverlayProps) => {
   const [scannerOffset, setScannerOffset] = useState(0)
   const [showHelpModal, setShowHelpModal] = useState(false)
+  const [isDesktop, setIsDesktop] = useState(false)
+
+  // Detect actual device type using screen width (not iframe/container width)
+  useEffect(() => {
+    const actualScreenWidth = window.screen.width
+    setIsDesktop(actualScreenWidth >= 768)
+  }, [])
 
   const getDocumentLabel = () => {
     const labels: Record<string, string> = {
@@ -42,13 +49,17 @@ const IDCaptureOverlay = ({ documentType, onCapture, onBack, videoRef, isBackSid
 
   const handleCapture = () => {
     if (videoRef.current) {
+      const video = videoRef.current
       const canvas = document.createElement('canvas')
-      canvas.width = videoRef.current.videoWidth
-      canvas.height = videoRef.current.videoHeight
+
+      // Capture full frame at native resolution
+      canvas.width = video.videoWidth
+      canvas.height = video.videoHeight
+
       const ctx = canvas.getContext('2d')
       if (ctx) {
-        ctx.drawImage(videoRef.current, 0, 0)
-        const base64String = canvas.toDataURL('image/jpeg')
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+        const base64String = canvas.toDataURL('image/jpeg', 0.92)
         onCapture(base64String)
       }
     }
@@ -65,12 +76,10 @@ const IDCaptureOverlay = ({ documentType, onCapture, onBack, videoRef, isBackSid
         className="absolute inset-0 w-full h-full object-cover"
       />
 
-     <IDScannerFrame 
-  mobileTop={180}
-  desktopTop={270}
-  mobileHeight={200}
-  desktopHeight={180}
-  scannerOffset={scannerOffset} 
+     <IDScannerFrame
+  mobileTop={90}
+  desktopTop={120}
+  scannerOffset={scannerOffset}
 />
 
 
@@ -83,17 +92,26 @@ const IDCaptureOverlay = ({ documentType, onCapture, onBack, videoRef, isBackSid
       </button>
 
       {/* Header text */}
-      <div className="absolute top-20 sm:top-20 left-6 right-6 z-10">
+      <div className="absolute top-14 sm:top-16 left-3 right-3 z-10">
         <h1 className="text-xl sm:text-lg font-semibold text-white">
           Place the <span className="text-emerald-400">{getDocumentLabel()}</span> in the frame
         </h1>
+      </div>
+
+      {/* Hint text inside frame */}
+      <div className="absolute left-6 right-6 z-10 flex justify-center" style={{ top: isDesktop ? 'calc(120px + 20px)' : 'calc(90px + 20px)' }}>
+        <p className="text-sm text-white/70 text-center">
+          {isDesktop
+            ? 'Bring document closer to camera for better quality'
+            : 'Hold document close to fill the frame'}
+        </p>
       </div>
 
       {/* Capture button */}
       <div className="absolute bottom-32 sm:bottom-16 left-0 right-0 flex justify-center z-10">
         <button
           onClick={handleCapture}
-          className="w-20 h-20 sm:w-16 sm:h-16 rounded-full border-4 border-white flex items-center justify-center"
+          className="w-20 h-20 sm:w-16 sm:h-16 rounded-full border-4 border-white flex items-center justify-center transition-transform hover:scale-105 active:scale-95"
         >
           <div className="w-16 h-16 sm:w-12 sm:h-12 rounded-full bg-white" />
         </button>
@@ -142,64 +160,83 @@ const IDCaptureOverlay = ({ documentType, onCapture, onBack, videoRef, isBackSid
 interface IDScannerFrameProps {
   mobileTop: number      // pixels from top on mobile
   desktopTop: number     // pixels from top on desktop
-  mobileHeight: number   // frame height on mobile
-  desktopHeight: number  // frame height on desktop
   scannerOffset: number
 }
 
-const IDScannerFrame = ({ mobileTop, desktopTop, mobileHeight, desktopHeight, scannerOffset }: IDScannerFrameProps) => {
+const IDScannerFrame = ({ mobileTop, desktopTop, scannerOffset }: IDScannerFrameProps) => {
+  const [frameHeight, setFrameHeight] = useState(200)
+  const [frameWidth, setFrameWidth] = useState(0)
+  const [isMobile, setIsMobile] = useState(true)
+
+  useEffect(() => {
+    const calculateFrameDimensions = () => {
+      // ID card aspect ratio is ~1.586:1 (85.6mm x 54mm)
+      const idCardAspectRatio = 1.586
+      const containerWidth = window.innerWidth
+      // Use screen.width to detect actual device, not iframe/container size
+      const actualScreenWidth = window.screen.width
+      const mobile = actualScreenWidth < 768
+      setIsMobile(mobile)
+
+      let width: number
+      if (mobile) {
+        // Mobile: use full container width minus padding
+        width = containerWidth - 48
+      } else {
+        // Desktop: use full container width (no padding)
+        // Maximum frame size allows document to be as close as possible to webcam
+        width = containerWidth
+      }
+
+      console.log('[IDScannerFrame] Device detection:', {
+        containerWidth,
+        actualScreenWidth,
+        isMobile: mobile,
+        device: mobile ? 'MOBILE' : 'DESKTOP',
+        frameWidth: width,
+        frameHeight: width / idCardAspectRatio
+      })
+
+      setFrameWidth(width)
+      setFrameHeight(width / idCardAspectRatio)
+    }
+
+    calculateFrameDimensions()
+    window.addEventListener('resize', calculateFrameDimensions)
+    return () => window.removeEventListener('resize', calculateFrameDimensions)
+  }, [])
+
+  const topPosition = isMobile ? mobileTop : desktopTop
+  const horizontalPadding = isMobile ? 24 : (typeof window !== 'undefined' ? (window.innerWidth - frameWidth) / 2 : 24)
+
   return (
     <div className="absolute inset-0">
       {/* Top dark section */}
-      <div 
-        className="absolute top-0 left-0 right-0 bg-black/70" 
-        style={{ height: `${mobileTop}px` }}
-      />
-      <div 
-        className="absolute top-0 left-0 right-0 bg-black/70 hidden sm:block" 
-        style={{ height: `${desktopTop}px` }}
+      <div
+        className="absolute top-0 left-0 right-0 bg-black/70"
+        style={{ height: `${topPosition}px` }}
       />
 
       {/* Middle section with cutout */}
-      <div 
-        className="absolute left-0 right-0 flex sm:hidden" 
-        style={{ top: `${mobileTop}px`, height: `${mobileHeight}px` }}
+      <div
+        className="absolute left-0 right-0 flex"
+        style={{ top: `${topPosition}px`, height: `${frameHeight}px` }}
       >
-        <div className="w-6 bg-black/70" />
-        <div className="flex-1 relative rounded-2xl overflow-hidden">
+        <div className="bg-black/70" style={{ width: `${horizontalPadding}px` }} />
+        <div className="relative rounded-2xl overflow-hidden" style={{ width: `${frameWidth}px` }}>
           <CornerBrackets />
           <div
             className="absolute left-2 right-2 h-0.5 bg-gradient-to-r from-transparent via-emerald-400 to-transparent opacity-60"
             style={{ top: `${scannerOffset}%` }}
           />
         </div>
-        <div className="w-6 bg-black/70" />
-      </div>
-
-      {/* Desktop middle section */}
-      <div 
-        className="absolute left-0 right-0 hidden sm:flex" 
-        style={{ top: `${desktopTop}px`, height: `${desktopHeight}px` }}
-      >
-        <div className="w-6 bg-black/70" />
-        <div className="flex-1 relative rounded-2xl overflow-hidden">
-          <CornerBrackets />
-          <div
-            className="absolute left-2 right-2 h-0.5 bg-gradient-to-r from-transparent via-emerald-400 to-transparent opacity-60"
-            style={{ top: `${scannerOffset}%` }}
-          />
-        </div>
-        <div className="w-6 bg-black/70" />
+        <div className="bg-black/70" style={{ width: `${horizontalPadding}px` }} />
       </div>
 
       {/* Bottom dark section */}
-      <div 
-        className="absolute left-0 right-0 bottom-0 bg-black/70 sm:hidden" 
-        style={{ top: `${mobileTop + mobileHeight}px` }}
-      />
-      <div 
-        className="absolute left-0 right-0 bottom-0 bg-black/70 hidden sm:block" 
-        style={{ top: `${desktopTop + desktopHeight}px` }}
+      <div
+        className="absolute left-0 right-0 bottom-0 bg-black/70"
+        style={{ top: `${topPosition + frameHeight}px` }}
       />
     </div>
   )

@@ -207,6 +207,27 @@ export async function createVerification(
 }
 
 /**
+ * Detect if the current device is mobile
+ * Mobile devices typically have better cameras, so we use cheaper OCR models
+ * Desktop devices use more expensive models for better accuracy with lower quality webcams
+ */
+function isMobileDevice(): boolean {
+  if (typeof window === 'undefined') return false;
+
+  // Only use user agent detection - window width is unreliable (modal can be narrow on desktop)
+  const mobileUserAgentPattern = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i;
+  const isMobile = mobileUserAgentPattern.test(navigator.userAgent);
+
+  console.log('[API] Device detection:', {
+    userAgent: navigator.userAgent.substring(0, 80) + '...',
+    isMobile,
+    reason: isMobile ? 'Mobile user agent detected' : 'Desktop user agent'
+  });
+
+  return isMobile;
+}
+
+/**
  * 6. Upload document
  */
 export async function uploadDocument(
@@ -226,6 +247,19 @@ export async function uploadDocument(
   formData.append('document', file);
   formData.append('documentType', documentType);
   formData.append('side', side);
+
+  // Pass device type for model selection (mobile = better camera = cheaper model)
+  const deviceType = isMobileDevice() ? 'mobile' : 'desktop';
+  formData.append('deviceType', deviceType);
+
+  console.log('[API] uploadDocument - deviceType:', deviceType);
+  console.log('[API] uploadDocument - FormData contents:', {
+    documentType,
+    side,
+    deviceType,
+    fileSize: file.size,
+    fileName: file.name
+  });
 
   const url = partnerId
     ? getApiUrl(`/api/verifications/${verificationId}/documents?partnerId=${partnerId}`)
@@ -294,6 +328,7 @@ export async function submitVerification(
 
   console.log('[API] submitVerification - URL:', url);
   console.log('[API] submitVerification - referenceId:', referenceId || 'NOT PROVIDED');
+  console.log('[API] submitVerification - Note: deviceType not sent (OCR already done during document upload)');
 
   const response = await fetch(url, {
     method: 'POST',
@@ -347,16 +382,49 @@ export async function completeVerification(
   }
 }
 
-// Document type mapping
-export const DOCUMENT_TYPES: Record<string, string> = {
-  'drivers_license': 'DRIVERS_LICENSE',
-  'id_card': 'NATIONAL_ID',
-  'passport': 'PASSPORT',
+// Country-specific document type mappings based on backend API
+const US_DOCUMENT_TYPES: Record<string, string> = {
+  'drivers_license': 'US_DRIVERS_LICENSE',
+  'passport': 'US_PASSPORT',
+  'state_id': 'US_STATE_ID',
+  'passport_card': 'US_PASSPORT', // No specific type, using US_PASSPORT
+  'us_green_card': 'GREEN_CARD',
+  'work_permit': 'RESIDENCE_PERMIT',
 };
 
-// Get document type for API
-export function getApiDocumentType(uiDocumentType: string): string {
-  return DOCUMENT_TYPES[uiDocumentType] || 'OTHER';
+const CA_DOCUMENT_TYPES: Record<string, string> = {
+  'drivers_license': 'CA_DRIVERS_LICENSE',
+  'passport': 'CA_PASSPORT',
+  'photo_card': 'NATIONAL_ID', // No specific type, using NATIONAL_ID
+  'health_card': 'CA_HEALTH_CARD',
+  'permanent_resident': 'PERMANENT_RESIDENT_CARD',
+  'indian_status': 'CA_INDIAN_STATUS_CARD',
+};
+
+const GENERIC_DOCUMENT_TYPES: Record<string, string> = {
+  'drivers_license': 'DRIVERS_LICENSE',
+  'passport': 'PASSPORT',
+  'id_card': 'NATIONAL_ID',
+  'health_card': 'HEALTH_CARD',
+  'permanent_resident': 'PERMANENT_RESIDENT_CARD',
+};
+
+// Get document type for API based on country
+export function getApiDocumentType(uiDocumentType: string, country?: string): string {
+  const countryLower = country?.toLowerCase() || '';
+
+  // Check for US
+  if (countryLower === 'united states' || countryLower === 'united states of america' || countryLower === 'usa' || countryLower === 'us') {
+    return US_DOCUMENT_TYPES[uiDocumentType] || 'OTHER';
+  }
+
+  // Check for Canada
+  if (countryLower === 'canada') {
+    return CA_DOCUMENT_TYPES[uiDocumentType] || 'OTHER';
+  }
+
+  // Generic/other countries
+  return GENERIC_DOCUMENT_TYPES[uiDocumentType] || 'OTHER';
 }
 
 /**

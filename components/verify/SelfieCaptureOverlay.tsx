@@ -18,7 +18,11 @@ const SelfieCaptureOverlay = ({ onCapture, onClose }: SelfieCaptureOverlayProps)
     const startCamera = async () => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } }
+          video: {
+            facingMode: 'user',
+            width: { ideal: 3840, min: 1280 },
+            height: { ideal: 2160, min: 720 },
+          }
         })
         if (videoRef.current) {
           videoRef.current.srcObject = stream
@@ -38,7 +42,7 @@ const SelfieCaptureOverlay = ({ onCapture, onClose }: SelfieCaptureOverlayProps)
     }
   }, [])
 
-  // Capture photo
+  // Capture photo - full frame at native resolution for best quality
   const handleCapture = useCallback(() => {
     if (!videoRef.current || !canvasRef.current) return
 
@@ -48,15 +52,25 @@ const SelfieCaptureOverlay = ({ onCapture, onClose }: SelfieCaptureOverlayProps)
 
     if (!ctx) return
 
-    canvas.width = video.videoWidth
-    canvas.height = video.videoHeight
+    const videoWidth = video.videoWidth
+    const videoHeight = video.videoHeight
 
-    // Mirror the image (selfie mode)
+    // Capture full video frame at native resolution
+    // The oval overlay is just a positioning guide - backend will process the full image
+    canvas.width = videoWidth
+    canvas.height = videoHeight
+
+    // Disable smoothing to preserve sharpness at native resolution
+    ctx.imageSmoothingEnabled = false
+
+    // Draw mirrored full frame (front camera is mirrored)
+    ctx.save()
     ctx.translate(canvas.width, 0)
     ctx.scale(-1, 1)
-    ctx.drawImage(video, 0, 0)
+    ctx.drawImage(video, 0, 0, videoWidth, videoHeight)
+    ctx.restore()
 
-    const imageData = canvas.toDataURL('image/jpeg', 0.9)
+    const imageData = canvas.toDataURL('image/jpeg', 1.0)
     onCapture(imageData)
   }, [onCapture])
 
