@@ -9,6 +9,7 @@ import type {
   DetectionResult,
   DetectionConfig,
   QualityLevel,
+  FaceDetectionResult,
   DEFAULT_DETECTION_CONFIG,
 } from './types';
 import { initializeTensorFlow, isTensorFlowReady } from './model-loader';
@@ -111,7 +112,7 @@ export async function analyzeFrame(
     ]);
 
     // Face detection - only if document detected and face detector ready
-    let faceResult = { detected: false, confidence: 0, bounds: null, landmarks: null };
+    let faceResult: FaceDetectionResult = { detected: false, confidence: 0, bounds: null, landmarks: null };
     if (mergedConfig.enableFaceDetection && documentResult.detected && isFaceDetectorReady()) {
       try {
         faceResult = await detectFace(imageData);
