@@ -101,7 +101,8 @@ export async function detectFace(
 
     if (!bestFace) {
       // No face matching ID card constraints, return best face anyway with warning
-      bestFace = predictions.reduce((best, curr) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      bestFace = predictions.reduce((best: any, curr: any) => {
         const currConf = curr.probability?.[0] ?? 0;
         const bestConf = best.probability?.[0] ?? 0;
         return currConf > bestConf ? curr : best;
