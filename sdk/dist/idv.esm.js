@@ -375,7 +375,7 @@ class ModalManager {
     }
 }
 
-const SDK_VERSION = '1.0.0';
+const SDK_VERSION = '1.0.23.1';
 /**
  * Main IDV SDK class
  */
