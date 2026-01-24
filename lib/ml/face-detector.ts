@@ -152,9 +152,11 @@ export async function detectMultipleFaces(
     const predictions = await blazefaceModel!.estimateFaces(imageData, false);
 
     return predictions
-      .filter(p => (p.probability?.[0] ?? 0) >= MIN_FACE_CONFIDENCE)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .filter((p: any) => (p.probability?.[0] ?? 0) >= MIN_FACE_CONFIDENCE)
       .slice(0, maxFaces)
-      .map(prediction => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .map((prediction: any) => {
         const topLeft = prediction.topLeft as [number, number];
         const bottomRight = prediction.bottomRight as [number, number];
 
