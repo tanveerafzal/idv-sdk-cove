@@ -35,7 +35,6 @@ import {
   type VerificationResult,
   type PartnerInfo,
 } from '@/lib/api'
-import type { ExtractedIDData } from '@/lib/ocr'
 
 export type VerificationStep = 1 | 2 | 3 | 3.5 | 4 | 5 | 6 | 7 | 7.5 | 8
 
