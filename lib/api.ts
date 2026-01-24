@@ -33,10 +33,35 @@ export interface PartnerInfo {
 export interface DocumentUploadResponse {
   documentId: string;
   documentType: string;
+  documentUrl?: string;
   detection?: {
     detectedType: string;
     confidence: number;
   };
+  extractedData?: ExtractedDocumentData;
+  quality?: {
+    isBlurry: boolean;
+    hasGlare: boolean;
+    isComplete: boolean;
+    qualityScore: number;
+    issues: string[];
+  };
+}
+
+export interface ExtractedDocumentData {
+  documentNumber?: string;
+  firstName?: string;
+  lastName?: string;
+  fullName?: string;
+  dateOfBirth?: string;
+  gender?: string;
+  nationality?: string;
+  issuingCountry?: string;
+  issueDate?: string;
+  expiryDate?: string;
+  address?: ExtractedAddress;
+  documentType?: string;
+  confidence?: number;
 }
 
 export interface SelfieUploadResponse {
@@ -130,7 +155,7 @@ export async function getVerification(verificationId: string): Promise<Verificat
 }
 
 /**
- * 3. Get partner public info
+ * 2. Get partner public info
  */
 export async function getPartnerInfo(partnerId: string): Promise<PartnerInfo> {
   const response = await fetch(getApiUrl(`/api/partners/${partnerId}/public`));
@@ -276,7 +301,18 @@ export async function uploadDocument(
     throw new Error(data.error || 'Failed to upload document');
   }
 
-  return data.data;
+  // Map response to DocumentUploadResponse
+  const result: DocumentUploadResponse = {
+    documentId: data.data.document?.id || data.data.documentId,
+    documentType: data.data.documentType,
+    documentUrl: data.data.documentUrl,
+    extractedData: data.data.extractedData,
+    quality: data.data.quality,
+  };
+
+  console.log('[API] uploadDocument - Extracted data:', result.extractedData);
+
+  return result;
 }
 
 /**

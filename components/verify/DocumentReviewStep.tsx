@@ -1,12 +1,14 @@
-import { Button } from '@/components/ui/button'
-import { VerificationData } from '@/app/verify/page'
+'use client';
+
+import { Button } from '@/components/ui/button';
+import { VerificationData } from '@/app/verify/page';
 
 interface DocumentReviewStepProps {
-  data: VerificationData
-  onNext: () => void
-  onBack: () => void
-  updateData: (data: Partial<VerificationData>) => void
-  error?: string | null
+  data: VerificationData;
+  onNext: () => void;
+  onBack: () => void;
+  updateData: (data: Partial<VerificationData>) => void;
+  error?: string | null;
 }
 
 export default function DocumentReviewStep({
@@ -16,52 +18,57 @@ export default function DocumentReviewStep({
   updateData,
   error,
 }: DocumentReviewStepProps) {
-  const hasBackImage = !!data.documentBackImage
+  const hasBackImage = !!data.documentBackImage;
 
   const handleRetake = () => {
     updateData({
       documentFrontImage: null,
       documentBackImage: null,
-      retakeDocument: true
-    })
-    onBack()
-  }
+      retakeDocument: true,
+    });
+    onBack();
+  };
 
   return (
     <div className="flex flex-col h-full">
       <div className="flex-1 space-y-4 overflow-y-auto pb-24">
         <div className="space-y-2">
-          <h2 className="text-xl font-bold text-gray-900">Review your documents</h2>
-          <p className="text-sm text-gray-600">Make sure all text is clear and readable</p>
+          <h2 className="text-xl font-bold text-gray-900">Review your document</h2>
+          <p className="text-sm text-gray-600">
+            Make sure the image is clear and all text is readable
+          </p>
         </div>
 
-        {/* Front of document */}
-        <div className="space-y-2">
-          {hasBackImage && (
-            <p className="text-sm font-medium text-gray-700">Front</p>
-          )}
-          <div className="rounded-lg overflow-hidden border border-gray-200">
-            <img
-              src={data.documentFrontImage || ''}
-              alt="Document front"
-              className="w-full"
-            />
-          </div>
-        </div>
-
-        {/* Back of document (if captured) */}
-        {hasBackImage && (
+        <div className="space-y-4">
+          {/* Front of document */}
           <div className="space-y-2">
-            <p className="text-sm font-medium text-gray-700">Back</p>
+            {hasBackImage && (
+              <p className="text-sm font-medium text-gray-700">Front</p>
+            )}
             <div className="rounded-lg overflow-hidden border border-gray-200">
               <img
-                src={data.documentBackImage || ''}
-                alt="Document back"
+                src={data.documentFrontImage || ''}
+                alt="Document front"
                 className="w-full"
               />
             </div>
           </div>
-        )}
+
+          {/* Back of document (if captured) */}
+          {hasBackImage && (
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-gray-700">Back</p>
+              <div className="rounded-lg overflow-hidden border border-gray-200">
+                <img
+                  src={data.documentBackImage || ''}
+                  alt="Document back"
+                  className="w-full"
+                />
+              </div>
+            </div>
+          )}
+
+        </div>
 
         {error && (
           <div className="bg-red-50 border border-red-200 rounded-lg p-3">
@@ -91,5 +98,5 @@ export default function DocumentReviewStep({
         </div>
       </div>
     </div>
-  )
+  );
 }

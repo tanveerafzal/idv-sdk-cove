@@ -1,6 +1,6 @@
 {
   "name": "@trustcredo/idv-sdk",
-  "version": "1.0.0",
+  "version": "1.0.23.1",
   "description": "TrustCredo Identity Verification SDK for embedding verification flows into web applications",
   "type": "module",
   "main": "dist/idv.min.js",

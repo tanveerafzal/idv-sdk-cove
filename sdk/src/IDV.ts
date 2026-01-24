@@ -10,7 +10,7 @@ import { ErrorCodes } from './types';
 import { MessageBus } from './MessageBus';
 import { ModalManager } from './ModalManager';
 
-const SDK_VERSION = '1.0.0';
+const SDK_VERSION = '1.0.23.1';
 
 /**
  * Main IDV SDK class
@@ -77,9 +77,13 @@ export class IDVCore {
       // Build iframe URL
       const iframeSrc = this.buildIframeUrl(options);
 
-      // Set up message bus
+      // Set up message bus - allow both configured origin and actual iframe origin
       const verifyOrigin = this.getVerifyOrigin();
-      this.messageBus = new MessageBus([verifyOrigin], this.config.debug);
+      const iframeOrigin = new URL(iframeSrc).origin;
+      const allowedOrigins = verifyOrigin === iframeOrigin
+        ? [verifyOrigin]
+        : [verifyOrigin, iframeOrigin];
+      this.messageBus = new MessageBus(allowedOrigins, this.config.debug);
       this.setupMessageHandlers(resolve, reject);
 
       // Create and open modal

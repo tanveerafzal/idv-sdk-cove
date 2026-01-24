@@ -115,11 +115,12 @@ export class ModalManager {
         transition: 'transform 0.2s ease-out',
       });
     } else {
+      // Desktop: use wider modal for better document capture experience
       Object.assign(this.container.style, {
         width: '100%',
-        maxWidth: '420px',
+        maxWidth: '800px',
         height: '90vh',
-        maxHeight: '720px',
+        maxHeight: '900px',
         backgroundColor: theme.backgroundColor || '#ffffff',
         borderRadius: theme.borderRadius || '16px',
         overflow: 'hidden',

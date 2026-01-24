@@ -1,9 +1,14 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { ChevronLeft } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
+import { useMLDetection } from '@/lib/hooks/useMLDetection'
+import { useAutoCapture } from '@/lib/hooks/useAutoCapture'
+import { DetectionFeedback, DetectionMessage } from './DetectionFeedback'
+import { AutoCaptureProgress, CapturingOverlay } from './AutoCaptureProgress'
+import type { DetectionConfig, DetectionResult } from '@/lib/ml/types'
 
 interface IDCaptureOverlayProps {
   documentType: string
@@ -11,17 +16,110 @@ interface IDCaptureOverlayProps {
   onBack: () => void
   videoRef: React.RefObject<HTMLVideoElement>
   isBackSide?: boolean
+  enableMLDetection?: boolean
+  detectionConfig?: Partial<DetectionConfig>
 }
 
-const IDCaptureOverlay = ({ documentType, onCapture, onBack, videoRef, isBackSide = false }: IDCaptureOverlayProps) => {
+const IDCaptureOverlay = ({
+  documentType,
+  onCapture,
+  onBack,
+  videoRef,
+  isBackSide = false,
+  enableMLDetection = true,
+  detectionConfig = {},
+}: IDCaptureOverlayProps) => {
   const [scannerOffset, setScannerOffset] = useState(0)
   const [showHelpModal, setShowHelpModal] = useState(false)
   const [isDesktop, setIsDesktop] = useState(false)
+  const [isCapturing, setIsCapturing] = useState(false)
 
-  // Detect actual device type using screen width (not iframe/container width)
+  // ML Detection hook
+  const {
+    result: detectionResult,
+    isReady: mlReady,
+    startDetection,
+    stopDetection,
+  } = useMLDetection({
+    config: {
+      ...detectionConfig,
+      // Disable face detection for back side
+      enableFaceDetection: !isBackSide && (detectionConfig.enableFaceDetection !== false),
+    },
+    enabled: enableMLDetection,
+  })
+
+  // Auto-capture hook
+  const {
+    state: autoCaptureState,
+    updateDetectionResult,
+    reset: resetAutoCapture,
+  } = useAutoCapture({
+    delayMs: detectionConfig.autoCaptureDelayMs ?? 2500,
+    enabled: enableMLDetection,
+    onCapture: () => handleAutoCapture(),
+  })
+
+  // Track last detection result for motion tolerance
+  const lastResultRef = useRef<DetectionResult | null>(null)
+
+  // Update auto-capture when detection result changes (with motion tolerance)
   useEffect(() => {
-    const actualScreenWidth = window.screen.width
-    setIsDesktop(actualScreenWidth >= 768)
+    if (!detectionResult) return
+
+    const last = lastResultRef.current
+
+    // Filter out tiny jitter in detection bounds
+    if (last && detectionResult.documentBounds && last.documentBounds) {
+      const dx = Math.abs(detectionResult.documentBounds.x - last.documentBounds.x)
+      const dy = Math.abs(detectionResult.documentBounds.y - last.documentBounds.y)
+      const dw = Math.abs(detectionResult.documentBounds.width - last.documentBounds.width)
+      const dh = Math.abs(detectionResult.documentBounds.height - last.documentBounds.height)
+
+      // Ignore tiny jitter - only update if movement is significant
+      if (dx < 4 && dy < 4 && dw < 6 && dh < 6) {
+        // Still update auto-capture state even if bounds didn't change much
+        updateDetectionResult(detectionResult)
+        return
+      }
+    }
+
+    lastResultRef.current = detectionResult
+    updateDetectionResult(detectionResult)
+  }, [detectionResult, updateDetectionResult])
+
+  // Start ML detection when video is ready
+  useEffect(() => {
+    if (!enableMLDetection) return
+
+    const video = videoRef.current
+    if (!video) return
+
+    const handleCanPlay = () => {
+      startDetection(video)
+    }
+
+    if (video.readyState >= 2) {
+      startDetection(video)
+    } else {
+      video.addEventListener('canplay', handleCanPlay)
+    }
+
+    return () => {
+      video.removeEventListener('canplay', handleCanPlay)
+      stopDetection()
+    }
+  }, [enableMLDetection, videoRef, startDetection, stopDetection])
+
+  // Detect desktop vs mobile context using innerWidth
+  // This handles both actual mobile devices AND desktop SDK embeds with narrow iframes
+  useEffect(() => {
+    const updateDesktopState = () => {
+      setIsDesktop(window.innerWidth >= 768)
+    }
+    updateDesktopState()
+    window.addEventListener('resize', updateDesktopState)
+    return () => window.removeEventListener('resize', updateDesktopState)
   }, [])
 
   const getDocumentLabel = () => {
@@ -47,27 +145,65 @@ const IDCaptureOverlay = ({ documentType, onCapture, onBack, videoRef, isBackSid
     return () => clearInterval(interval)
   }, [])
 
-  const handleCapture = () => {
+  const captureImage = useCallback((): string | null => {
     if (videoRef.current) {
       const video = videoRef.current
       const canvas = document.createElement('canvas')
 
-      // Capture full frame at native resolution
       canvas.width = video.videoWidth
       canvas.height = video.videoHeight
 
       const ctx = canvas.getContext('2d')
       if (ctx) {
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
-        const base64String = canvas.toDataURL('image/jpeg', 0.92)
-        onCapture(base64String)
+        return canvas.toDataURL('image/jpeg', 0.92)
       }
+    }
+    return null
+  }, [videoRef])
+
+  const handleCapture = useCallback(() => {
+    const imageData = captureImage()
+    if (imageData) {
+      stopDetection()
+      onCapture(imageData)
+    }
+  }, [captureImage, stopDetection, onCapture])
+
+  const handleAutoCapture = useCallback(() => {
+    setIsCapturing(true)
+    // Small delay for visual feedback
+    setTimeout(() => {
+      handleCapture()
+    }, 200)
+  }, [handleCapture])
+
+  const handleManualCapture = () => {
+    resetAutoCapture()
+    handleCapture()
+  }
+
+  const handleBack = () => {
+    resetAutoCapture()
+    stopDetection()
+    onBack()
+  }
+
+  // Quality indicator based on detection result
+  const getQualityColor = (result: DetectionResult | null) => {
+    if (!result) return 'border-white/50'
+    switch (result.overallQuality) {
+      case 'excellent': return 'border-emerald-400'
+      case 'good': return 'border-emerald-400/70'
+      case 'fair': return 'border-amber-400'
+      case 'poor': return 'border-red-400/50'
+      default: return 'border-white/50'
     }
   }
 
   return (
-    <div className="fixed inset-0 z-[100] bg-black sm:absolute sm:top-0 sm:left-0 sm:right-0 sm:bottom-0 sm:w-full sm:h-full sm:rounded-xl sm:overflow-hidden animate-fade-in">
-      {/* Camera feed */}
+    <div className="fixed inset-0 z-[100] bg-black animate-fade-in">
+      {/* Camera feed - fullscreen on all devices for better ID visibility */}
       <video
         ref={videoRef}
         autoPlay
@@ -76,44 +212,81 @@ const IDCaptureOverlay = ({ documentType, onCapture, onBack, videoRef, isBackSid
         className="absolute inset-0 w-full h-full object-cover"
       />
 
-     <IDScannerFrame
-  mobileTop={90}
-  desktopTop={120}
-  scannerOffset={scannerOffset}
-/>
+      {/* Capturing overlay */}
+      <CapturingOverlay visible={isCapturing} />
 
+      <IDScannerFrame
+        mobileTop={70}
+        desktopTop={80}
+        scannerOffset={scannerOffset}
+        qualityBorderColor={getQualityColor(detectionResult)}
+      />
 
       {/* Back button */}
       <button
-        onClick={onBack}
+        onClick={handleBack}
         className="absolute top-4 sm:top-2 left-4 z-10 text-white p-2"
       >
         <ChevronLeft className="h-6 w-6" />
       </button>
 
+      {/* Detection feedback indicators */}
+      {enableMLDetection && mlReady && (
+        <div className="absolute top-4 sm:top-2 right-4 z-10">
+          <DetectionFeedback result={detectionResult} compact />
+        </div>
+      )}
+
       {/* Header text */}
-      <div className="absolute top-14 sm:top-16 left-3 right-3 z-10">
+      <div className="absolute top-10 sm:top-12 left-3 right-3 z-10">
         <h1 className="text-xl sm:text-lg font-semibold text-white">
           Place the <span className="text-emerald-400">{getDocumentLabel()}</span> in the frame
         </h1>
+              </div>
+
+      {/* Hint text / Detection status */}
+      <div className="absolute left-6 right-6 z-10 flex justify-center" style={{ top: isDesktop ? 'calc(80px + 15px)' : 'calc(70px + 15px)' }}>
+        {enableMLDetection && detectionResult ? (
+          <DetectionMessage result={detectionResult} className="text-sm text-center" />
+        ) : (
+          <p className="text-sm text-white/70 text-center">
+            {isDesktop
+              ? 'Bring document closer to camera for better quality'
+              : 'Hold document close to fill the frame'}
+          </p>
+        )}
       </div>
 
-      {/* Hint text inside frame */}
-      <div className="absolute left-6 right-6 z-10 flex justify-center" style={{ top: isDesktop ? 'calc(120px + 20px)' : 'calc(90px + 20px)' }}>
-        <p className="text-sm text-white/70 text-center">
-          {isDesktop
-            ? 'Bring document closer to camera for better quality'
-            : 'Hold document close to fill the frame'}
-        </p>
-      </div>
+      {/* Auto-capture progress (above capture button) */}
+      {enableMLDetection && autoCaptureState.isCountingDown && (
+        <div className="absolute bottom-52 sm:bottom-36 left-0 right-0 flex flex-col items-center z-10">
+          <AutoCaptureProgress state={autoCaptureState} />
+          <p className="text-emerald-400 text-sm mt-2">Hold still...</p>
+        </div>
+      )}
 
       {/* Capture button */}
       <div className="absolute bottom-32 sm:bottom-16 left-0 right-0 flex justify-center z-10">
         <button
-          onClick={handleCapture}
-          className="w-20 h-20 sm:w-16 sm:h-16 rounded-full border-4 border-white flex items-center justify-center transition-transform hover:scale-105 active:scale-95"
+          onClick={handleManualCapture}
+          className={`
+            w-20 h-20 sm:w-16 sm:h-16 rounded-full border-4 flex items-center justify-center
+            transition-all duration-300 hover:scale-105 active:scale-95
+            ${detectionResult?.readyForCapture
+              ? 'border-emerald-400'
+              : 'border-white'
+            }
+          `}
         >
-          <div className="w-16 h-16 sm:w-12 sm:h-12 rounded-full bg-white" />
+          <div
+            className={`
+              w-16 h-16 sm:w-12 sm:h-12 rounded-full transition-colors duration-300
+              ${detectionResult?.readyForCapture
+                ? 'bg-emerald-400'
+                : 'bg-white'
+              }
+            `}
+          />
         </button>
       </div>
 
@@ -137,11 +310,11 @@ const IDCaptureOverlay = ({ documentType, onCapture, onBack, videoRef, isBackSid
           <div className="space-y-4">
             <p className="text-sm text-gray-600">Try these tips:</p>
             <ul className="text-sm text-gray-600 space-y-2">
-              <li>• Make sure your document is flat and not bent</li>
-              <li>• Find a well-lit area without glare</li>
-              <li>• Hold your phone steady and parallel to the document</li>
-              <li>• Ensure all corners of the document are visible</li>
-              <li>• Clean your camera lens if the image is blurry</li>
+              <li>Make sure your document is flat and not bent</li>
+              <li>Find a well-lit area without glare</li>
+              <li>Hold your phone steady and parallel to the document</li>
+              <li>Ensure all corners of the document are visible</li>
+              <li>Clean your camera lens if the image is blurry</li>
             </ul>
             <Button
               variant="outline"
@@ -158,47 +331,49 @@ const IDCaptureOverlay = ({ documentType, onCapture, onBack, videoRef, isBackSid
 }
 
 interface IDScannerFrameProps {
-  mobileTop: number      // pixels from top on mobile
-  desktopTop: number     // pixels from top on desktop
+  mobileTop: number
+  desktopTop: number
   scannerOffset: number
+  qualityBorderColor?: string
 }
 
-const IDScannerFrame = ({ mobileTop, desktopTop, scannerOffset }: IDScannerFrameProps) => {
+const IDScannerFrame = ({
+  mobileTop,
+  desktopTop,
+  scannerOffset,
+  qualityBorderColor = 'border-emerald-400',
+}: IDScannerFrameProps) => {
   const [frameHeight, setFrameHeight] = useState(200)
   const [frameWidth, setFrameWidth] = useState(0)
   const [isMobile, setIsMobile] = useState(true)
 
   useEffect(() => {
     const calculateFrameDimensions = () => {
-      // ID card aspect ratio is ~1.586:1 (85.6mm x 54mm)
       const idCardAspectRatio = 1.586
       const containerWidth = window.innerWidth
-      // Use screen.width to detect actual device, not iframe/container size
-      const actualScreenWidth = window.screen.width
-      const mobile = actualScreenWidth < 768
+      const containerHeight = window.innerHeight
+      // Use innerWidth to detect mobile context - this handles both actual mobile devices
+      // AND desktop SDK embeds where the iframe is narrow (e.g., 420px modal)
+      const mobile = containerWidth < 768
       setIsMobile(mobile)
 
       let width: number
+      let height: number
+
       if (mobile) {
-        // Mobile: use full container width minus padding
-        width = containerWidth - 48
+        // Mobile: use nearly full width for maximum ID visibility
+        width = containerWidth - 24  // Only 12px padding on each side
+        height = width / idCardAspectRatio
       } else {
-        // Desktop: use full container width (no padding)
-        // Maximum frame size allows document to be as close as possible to webcam
-        width = containerWidth
+        // Desktop: use most of the screen for clear ID visibility
+        const availableHeight = containerHeight - 200
+        const maxHeightBasedWidth = availableHeight * idCardAspectRatio
+        width = Math.min(containerWidth * 0.9, maxHeightBasedWidth, 1200)
+        height = width / idCardAspectRatio
       }
 
-      console.log('[IDScannerFrame] Device detection:', {
-        containerWidth,
-        actualScreenWidth,
-        isMobile: mobile,
-        device: mobile ? 'MOBILE' : 'DESKTOP',
-        frameWidth: width,
-        frameHeight: width / idCardAspectRatio
-      })
-
       setFrameWidth(width)
-      setFrameHeight(width / idCardAspectRatio)
+      setFrameHeight(height)
     }
 
     calculateFrameDimensions()
@@ -207,7 +382,9 @@ const IDScannerFrame = ({ mobileTop, desktopTop, scannerOffset }: IDScannerFrame
   }, [])
 
   const topPosition = isMobile ? mobileTop : desktopTop
-  const horizontalPadding = isMobile ? 24 : (typeof window !== 'undefined' ? (window.innerWidth - frameWidth) / 2 : 24)
+  const horizontalPadding = typeof window !== 'undefined'
+    ? Math.max(0, (window.innerWidth - frameWidth) / 2)
+    : 24
 
   return (
     <div className="absolute inset-0">
@@ -224,7 +401,7 @@ const IDScannerFrame = ({ mobileTop, desktopTop, scannerOffset }: IDScannerFrame
       >
         <div className="bg-black/70" style={{ width: `${horizontalPadding}px` }} />
         <div className="relative rounded-2xl overflow-hidden" style={{ width: `${frameWidth}px` }}>
-          <CornerBrackets />
+          <CornerBrackets qualityColor={qualityBorderColor} />
           <div
             className="absolute left-2 right-2 h-0.5 bg-gradient-to-r from-transparent via-emerald-400 to-transparent opacity-60"
             style={{ top: `${scannerOffset}%` }}
@@ -242,25 +419,23 @@ const IDScannerFrame = ({ mobileTop, desktopTop, scannerOffset }: IDScannerFrame
   )
 }
 
-const CornerBrackets = () => {
-  const bracketStyle = "absolute w-10 h-10 border-emerald-400"
-
+const CornerBrackets = ({ qualityColor = 'border-emerald-400' }: { qualityColor?: string }) => {
   return (
     <>
       {/* Top-left */}
-      <div className={`${bracketStyle} top-0 left-0 border-t-2 border-l-2 rounded-tl-2xl`} />
+      <div className={`absolute w-10 h-10 top-0 left-0 border-t-2 border-l-2 rounded-tl-2xl ${qualityColor} transition-colors duration-300`} />
       <ChevronRow position="top-2 left-12" direction="left" />
 
       {/* Top-right */}
-      <div className={`${bracketStyle} top-0 right-0 border-t-2 border-r-2 rounded-tr-2xl`} />
+      <div className={`absolute w-10 h-10 top-0 right-0 border-t-2 border-r-2 rounded-tr-2xl ${qualityColor} transition-colors duration-300`} />
       <ChevronRow position="top-2 right-12" direction="right" />
 
       {/* Bottom-left */}
-      <div className={`${bracketStyle} bottom-0 left-0 border-b-2 border-l-2 rounded-bl-2xl`} />
+      <div className={`absolute w-10 h-10 bottom-0 left-0 border-b-2 border-l-2 rounded-bl-2xl ${qualityColor} transition-colors duration-300`} />
       <ChevronRow position="bottom-2 left-12" direction="left" />
 
       {/* Bottom-right */}
-      <div className={`${bracketStyle} bottom-0 right-0 border-b-2 border-r-2 rounded-br-2xl`} />
+      <div className={`absolute w-10 h-10 bottom-0 right-0 border-b-2 border-r-2 rounded-br-2xl ${qualityColor} transition-colors duration-300`} />
       <ChevronRow position="bottom-2 right-12" direction="right" />
     </>
   )
@@ -277,7 +452,7 @@ const ChevronRow = ({ position, direction }: { position: string; direction: 'lef
           className="text-white text-xs"
           style={{ animationDelay: `${i * 0.1}s` }}
         >
-          {direction === 'left' ? '‹' : '›'}
+          {direction === 'left' ? '\u2039' : '\u203a'}
         </span>
       ))}
     </div>

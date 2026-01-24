@@ -23,6 +23,7 @@ import CompleteStep from '@/components/verify/CompleteStep'
 import ProgressBar from '@/components/verify/ProgressBar'
 import AppLayout from '@/components/AppLayout'
 import { Button } from '@/components/ui/button'
+import { QRCodeSVG } from 'qrcode.react'
 import {
   getPartnerInfo,
   validateApiKey,
@@ -76,6 +77,23 @@ function VerifyPageContent() {
   const [partnerInfo, setPartnerInfo] = useState<PartnerInfo | null>(null)
   const [verificationResult, setVerificationResult] = useState<VerificationResult | null>(null)
   const [processingStatus, setProcessingStatus] = useState<string>('Initializing...')
+  const [isDesktop, setIsDesktop] = useState(false)
+  const [mobileVerifyUrl, setMobileVerifyUrl] = useState<string>('')
+
+  // Detect desktop and build mobile QR URL
+  useEffect(() => {
+    const checkDesktop = () => {
+      // Check actual screen width (not container) to determine if on desktop
+      const isDesktopScreen = window.screen.width >= 1024
+      setIsDesktop(isDesktopScreen)
+    }
+    checkDesktop()
+
+    // Build the URL for QR code (current page URL with all params)
+    if (typeof window !== 'undefined') {
+      setMobileVerifyUrl(window.location.href)
+    }
+  }, [])
 
   // SDK messaging helper
   const sendSDKMessage = useCallback(<T,>(type: Parameters<typeof sendToParent>[0], payload: T) => {
@@ -280,7 +298,12 @@ function VerifyPageContent() {
 
       // Step 3: Submit and get result
       setProcessingStatus('Completing verification...')
+      const submitStartTime = Date.now()
+      console.log('[submitVerification] Start:', new Date(submitStartTime).toISOString())
       const result = await submitVerification(verificationId, partnerId || undefined, userId || undefined)
+      const submitEndTime = Date.now()
+      console.log('[submitVerification] End:', new Date(submitEndTime).toISOString())
+      console.log('[submitVerification] Duration:', (submitEndTime - submitStartTime) / 1000, 'seconds')
       setVerificationResult(result)
 
       // Check if verification failed and retry is allowed
@@ -358,41 +381,19 @@ function VerifyPageContent() {
         duration: Date.now() - startTime,
       })
 
-      // Send webhook to partner - DISABLED (webhook sent from backend)
-      // console.log('[Webhook] Checking webhook conditions:', {
-      //   hasPartnerInfo: !!partnerInfo,
-      //   webhookUrl: partnerInfo?.webhookUrl,
-      //   partnerId,
-      //   userId,
-      //   verificationId,
-      //   resultPassed: result.passed,
-      // })
-
-      // if (partnerInfo?.webhookUrl && partnerId) {
-      //   console.log('[Webhook] Sending webhook to:', partnerInfo.webhookUrl)
-      //   console.log('[Webhook] referenceId (userId):', userId)
-      //   sendWebhook({
-      //     webhookUrl: partnerInfo.webhookUrl,
-      //     verificationId,
-      //     partnerId,
-      //     referenceId: userId || undefined,
-      //     result,
-      //     extractedData: result.extractedData,
-      //     source: sdkMode ? 'sdk' : 'web-flow',
-      //     duration: Date.now() - startTime,
-      //   })
-      //     .then((response) => {
-      //       console.log('[Webhook] Delivery response:', response)
-      //     })
-      //     .catch((err) => {
-      //       console.error('[Webhook] Delivery failed:', err)
-      //     })
-      // } else {
-      //   console.log('[Webhook] Skipped - missing webhookUrl or partnerId')
-      // }
-
-      // Move to complete step
-      setCurrentStep(8)
+      // Close the window after verification complete
+      // Small delay to ensure SDK message is sent
+      setTimeout(() => {
+        if (sdkMode) {
+          // Send close message to parent
+          sendSDKMessage('IDV_CLOSE', {
+            verificationId,
+            status: result.passed ? 'passed' : 'failed',
+          })
+        }
+        // Try to close the window
+        window.close()
+      }, 500)
     } catch (err) {
       console.error('Verification submission error:', err)
       const errorMsg = err instanceof Error ? err.message : 'Verification failed'
@@ -473,7 +474,7 @@ function VerifyPageContent() {
           <div className="flex flex-col w-full h-full">
             <div className="space-y-3">
               <h1 className="text-2xl font-bold text-gray-900">
-                Let's get started <span className="text-white text-sm font-normal">v1.0.0</span>
+                Let's get started <span className="text-white text-sm font-normal">v1.24.2</span>
               </h1>
               <p className="text-gray-500 text-sm">
                 Verify your identity to keep your account secure.
@@ -516,12 +517,27 @@ function VerifyPageContent() {
               </div>
             </div>
 
-            {/* Mobile device recommendation */}
-            <div className="mt-8 p-3 bg-blue-50 rounded-lg border border-blue-100">
-              <p className="text-xs text-blue-700 text-center">
-                For best results, use a mobile device with a good camera.
-              </p>
-            </div>
+            {/* QR Code for desktop users to switch to mobile */}
+            {isDesktop && mobileVerifyUrl && (
+              <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                <p className="text-sm font-medium text-gray-700 text-center mb-3">
+                  Scan to continue on mobile
+                </p>
+                <div className="flex justify-center">
+                  <div className="bg-white p-2 rounded-lg">
+                    <QRCodeSVG
+                      value={mobileVerifyUrl}
+                      size={120}
+                      level="M"
+                      includeMargin={false}
+                    />
+                  </div>
+                </div>
+                <p className="text-xs text-gray-500 text-center mt-2">
+                  For best results, use your phone's camera
+                </p>
+              </div>
+            )}
 
             <div className="mt-auto pb-6">
               <div className="space-y-4">
