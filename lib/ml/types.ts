@@ -13,6 +13,7 @@ export interface DetectionResult {
   faceDetected: boolean;
   faceConfidence: number;
   faceBounds: BoundingBox | null;
+  isMoving: boolean;
   readyForCapture: boolean;
   overallQuality: QualityLevel;
   timestamp: number;
@@ -41,12 +42,12 @@ export interface DetectionConfig {
 }
 
 export const DEFAULT_DETECTION_CONFIG: DetectionConfig = {
-  minDocumentConfidence: 0.5,   // Lowered - more tolerant
-  maxBlurScore: 0.5,            // Increased - allow more blur
-  maxGlareScore: 0.4,           // Increased - allow more glare
-  minFaceConfidence: 0.4,       // Lowered - more tolerant
-  autoCaptureDelayMs: 2000,     // Faster capture
-  frameRateTarget: 8,           // Slightly lower FPS for stability
+  minDocumentConfidence: 0.6,   // Require 60% document confidence
+  maxBlurScore: 0.5,            // Allow some blur
+  maxGlareScore: 0.4,           // Allow some glare
+  minFaceConfidence: 0.4,       // Face detection threshold
+  autoCaptureDelayMs: 2500,     // 2.5 seconds for positioning
+  frameRateTarget: 10,          // Higher FPS for better detection
   enableFaceDetection: true,
   enableBlurDetection: true,
   enableGlareDetection: true,

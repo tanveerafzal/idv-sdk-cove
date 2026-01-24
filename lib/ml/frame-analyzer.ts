@@ -20,9 +20,31 @@ import { detectDocumentFast } from './document-detector';
 
 // Import default config
 import { DEFAULT_DETECTION_CONFIG as defaultConfig } from './types';
+import type { BoundingBox } from './types';
 
 let isInitialized = false;
 let initPromise: Promise<void> | null = null;
+
+// Motion detection - DISABLED for now
+// The edge detection bounds fluctuate too much, causing false "moving" detection
+// TODO: Re-enable once edge detection is more stable
+let previousBounds: (BoundingBox | null)[] = [];
+
+/**
+ * Detect if document is moving - DISABLED
+ * Always returns false to allow capture once document is detected
+ */
+function isDocumentMoving(currentBounds: BoundingBox | null): boolean {
+  // Motion detection disabled - edge detection bounds are not stable enough
+  return false;
+}
+
+/**
+ * Reset motion history (call when starting new capture session)
+ */
+export function resetMotionHistory(): void {
+  previousBounds = [];
+}
 
 /**
  * Initialize all ML components
@@ -87,6 +109,7 @@ export async function analyzeFrame(
     faceDetected: false,
     faceConfidence: 0,
     faceBounds: null,
+    isMoving: true, // Assume moving until proven stable
     readyForCapture: false,
     overallQuality: 'poor',
     timestamp,
@@ -121,6 +144,9 @@ export async function analyzeFrame(
       }
     }
 
+    // Check if document is moving
+    const moving = isDocumentMoving(documentResult.bounds);
+
     // Compile results
     result = {
       documentDetected: documentResult.detected,
@@ -133,6 +159,7 @@ export async function analyzeFrame(
       faceDetected: faceResult.detected,
       faceConfidence: faceResult.confidence,
       faceBounds: faceResult.bounds,
+      isMoving: moving,
       readyForCapture: false,
       overallQuality: 'poor',
       timestamp,
@@ -143,6 +170,19 @@ export async function analyzeFrame(
 
     // Calculate overall quality
     result.overallQuality = calculateOverallQuality(result, mergedConfig);
+
+    // Debug logging every ~2 seconds (based on timestamp)
+    if (timestamp % 2000 < 150) {
+      console.log('[FrameAnalyzer] Detection:', {
+        docDetected: result.documentDetected,
+        docConfidence: result.documentConfidence.toFixed(2),
+        isMoving: result.isMoving,
+        isBlurry: result.isBlurry,
+        hasGlare: result.hasGlare,
+        readyForCapture: result.readyForCapture,
+        quality: result.overallQuality,
+      });
+    }
 
     return result;
   } catch (error) {
@@ -183,6 +223,11 @@ function isReadyForCapture(result: DetectionResult, config: DetectionConfig): bo
     return false;
   }
 
+  // Document must be stable (not moving)
+  if (result.isMoving) {
+    return false;
+  }
+
   // Check blur
   if (config.enableBlurDetection && result.isBlurry) {
     return false;
@@ -193,13 +238,9 @@ function isReadyForCapture(result: DetectionResult, config: DetectionConfig): bo
     return false;
   }
 
-  // Check face (if enabled)
-  if (config.enableFaceDetection && !result.faceDetected) {
-    // Don't block on face if detector not ready
-    if (isFaceDetectorReady() && result.faceConfidence < config.minFaceConfidence) {
-      return false;
-    }
-  }
+  // Face detection is informational only - don't block capture
+  // Small faces on ID cards are hard to detect reliably
+  // The backend will validate the document properly
 
   return true;
 }
@@ -264,6 +305,7 @@ function createEmptyResult(): DetectionResult {
     faceDetected: false,
     faceConfidence: 0,
     faceBounds: null,
+    isMoving: true,
     readyForCapture: false,
     overallQuality: 'poor',
     timestamp: Date.now(),
@@ -278,16 +320,16 @@ export function getStatusMessage(result: DetectionResult, config: DetectionConfi
     return 'Position ID card in frame';
   }
 
+  if (result.isMoving) {
+    return 'Hold the document steady';
+  }
+
   if (result.isBlurry && config.enableBlurDetection) {
     return 'Hold camera still - image is blurry';
   }
 
   if (result.hasGlare && config.enableGlareDetection) {
     return 'Tilt document to reduce glare';
-  }
-
-  if (!result.faceDetected && config.enableFaceDetection && isFaceDetectorReady()) {
-    return 'Ensure face on ID is visible';
   }
 
   if (result.readyForCapture) {

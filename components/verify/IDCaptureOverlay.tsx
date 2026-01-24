@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { ChevronLeft } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
@@ -60,11 +60,32 @@ const IDCaptureOverlay = ({
     onCapture: () => handleAutoCapture(),
   })
 
-  // Update auto-capture when detection result changes
+  // Track last detection result for motion tolerance
+  const lastResultRef = useRef<DetectionResult | null>(null)
+
+  // Update auto-capture when detection result changes (with motion tolerance)
   useEffect(() => {
-    if (detectionResult) {
-      updateDetectionResult(detectionResult)
+    if (!detectionResult) return
+
+    const last = lastResultRef.current
+
+    // Filter out tiny jitter in detection bounds
+    if (last && detectionResult.documentBounds && last.documentBounds) {
+      const dx = Math.abs(detectionResult.documentBounds.x - last.documentBounds.x)
+      const dy = Math.abs(detectionResult.documentBounds.y - last.documentBounds.y)
+      const dw = Math.abs(detectionResult.documentBounds.width - last.documentBounds.width)
+      const dh = Math.abs(detectionResult.documentBounds.height - last.documentBounds.height)
+
+      // Ignore tiny jitter - only update if movement is significant
+      if (dx < 4 && dy < 4 && dw < 6 && dh < 6) {
+        // Still update auto-capture state even if bounds didn't change much
+        updateDetectionResult(detectionResult)
+        return
+      }
     }
+
+    lastResultRef.current = detectionResult
+    updateDetectionResult(detectionResult)
   }, [detectionResult, updateDetectionResult])
 
   // Start ML detection when video is ready
@@ -221,7 +242,7 @@ const IDCaptureOverlay = ({
         <h1 className="text-xl sm:text-lg font-semibold text-white">
           Place the <span className="text-emerald-400">{getDocumentLabel()}</span> in the frame
         </h1>
-      </div>
+              </div>
 
       {/* Hint text / Detection status */}
       <div className="absolute left-6 right-6 z-10 flex justify-center" style={{ top: isDesktop ? 'calc(80px + 15px)' : 'calc(70px + 15px)' }}>

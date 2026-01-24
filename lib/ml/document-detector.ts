@@ -16,8 +16,8 @@ const ID_CARD_ASPECT_RATIO = 1.586;
 const ASPECT_RATIO_TOLERANCE = 0.3; // Allow ±30% variation
 
 // Minimum document coverage in frame
-const MIN_COVERAGE = 0.15;  // Document should cover at least 15% of frame
-const MAX_COVERAGE = 0.95;  // Document shouldn't cover more than 95%
+const MIN_COVERAGE = 0.20;  // Document should cover at least 20% of frame
+const MAX_COVERAGE = 0.90;  // Document shouldn't cover more than 90%
 
 // Edge detection thresholds
 const EDGE_LOW_THRESHOLD = 50;
@@ -84,83 +84,144 @@ export async function detectDocument(imageData: ImageData): Promise<DocumentDete
 }
 
 /**
- * Fast document detection using color and edge analysis
+ * Fast document detection - SCAN LINE APPROACH
+ * Finds document edges by scanning rows and columns for brightness transitions
  */
 export async function detectDocumentFast(imageData: ImageData): Promise<DocumentDetectionResult> {
-  // Use native JavaScript for faster processing
   const { width, height, data } = imageData;
 
-  // Analyze image in grid cells for faster processing
-  const gridSize = 8;
-  const cellWidth = Math.floor(width / gridSize);
-  const cellHeight = Math.floor(height / gridSize);
+  // Get brightness at a pixel
+  const getBrightness = (x: number, y: number): number => {
+    const idx = (y * width + x) * 4;
+    return 0.299 * data[idx] + 0.587 * data[idx + 1] + 0.114 * data[idx + 2];
+  };
 
-  const cellBrightness: number[][] = [];
-  const cellEdgeStrength: number[][] = [];
+  // Scan parameters
+  const scanStep = 2;
+  const edgeThreshold = 35;
+  const minEdgeRun = 20; // Minimum continuous edge length
 
-  // Calculate brightness and edge strength per cell
-  for (let gy = 0; gy < gridSize; gy++) {
-    cellBrightness[gy] = [];
-    cellEdgeStrength[gy] = [];
-
-    for (let gx = 0; gx < gridSize; gx++) {
-      let brightness = 0;
-      let edgeCount = 0;
-      let prevBrightness = 0;
-      let sampleCount = 0;
-
-      const startX = gx * cellWidth;
-      const startY = gy * cellHeight;
-
-      // Sample pixels in cell
-      for (let y = startY; y < startY + cellHeight; y += 4) {
-        for (let x = startX; x < startX + cellWidth; x += 4) {
-          const idx = (y * width + x) * 4;
-          const r = data[idx];
-          const g = data[idx + 1];
-          const b = data[idx + 2];
-
-          const lum = 0.299 * r + 0.587 * g + 0.114 * b;
-          brightness += lum;
-
-          // Simple edge detection via brightness difference
-          if (sampleCount > 0) {
-            const diff = Math.abs(lum - prevBrightness);
-            if (diff > 30) edgeCount++;
-          }
-
-          prevBrightness = lum;
-          sampleCount++;
-        }
+  // Find TOP edge - scan from top down, looking for bright-to-dark or dark-to-bright transition
+  let topEdge = -1;
+  for (let y = 10; y < height / 2; y += scanStep) {
+    let edgeCount = 0;
+    for (let x = width * 0.1; x < width * 0.9; x += scanStep) {
+      const above = getBrightness(x, y - scanStep);
+      const current = getBrightness(x, y);
+      if (Math.abs(above - current) > edgeThreshold) {
+        edgeCount++;
       }
-
-      cellBrightness[gy][gx] = brightness / sampleCount;
-      cellEdgeStrength[gy][gx] = edgeCount / sampleCount;
+    }
+    if (edgeCount > minEdgeRun) {
+      topEdge = y;
+      break;
     }
   }
 
-  // Find rectangular region with consistent brightness and strong edges
-  const bounds = findRectangularRegion(cellBrightness, cellEdgeStrength, cellWidth, cellHeight);
+  // Find BOTTOM edge - scan from bottom up
+  let bottomEdge = -1;
+  for (let y = height - 10; y > height / 2; y -= scanStep) {
+    let edgeCount = 0;
+    for (let x = width * 0.1; x < width * 0.9; x += scanStep) {
+      const below = getBrightness(x, y + scanStep);
+      const current = getBrightness(x, y);
+      if (Math.abs(below - current) > edgeThreshold) {
+        edgeCount++;
+      }
+    }
+    if (edgeCount > minEdgeRun) {
+      bottomEdge = y;
+      break;
+    }
+  }
 
-  if (!bounds) {
+  // Find LEFT edge - scan from left to right
+  let leftEdge = -1;
+  for (let x = 10; x < width / 2; x += scanStep) {
+    let edgeCount = 0;
+    for (let y = height * 0.1; y < height * 0.9; y += scanStep) {
+      const left = getBrightness(x - scanStep, y);
+      const current = getBrightness(x, y);
+      if (Math.abs(left - current) > edgeThreshold) {
+        edgeCount++;
+      }
+    }
+    if (edgeCount > minEdgeRun) {
+      leftEdge = x;
+      break;
+    }
+  }
+
+  // Find RIGHT edge - scan from right to left
+  let rightEdge = -1;
+  for (let x = width - 10; x > width / 2; x -= scanStep) {
+    let edgeCount = 0;
+    for (let y = height * 0.1; y < height * 0.9; y += scanStep) {
+      const right = getBrightness(x + scanStep, y);
+      const current = getBrightness(x, y);
+      if (Math.abs(right - current) > edgeThreshold) {
+        edgeCount++;
+      }
+    }
+    if (edgeCount > minEdgeRun) {
+      rightEdge = x;
+      break;
+    }
+  }
+
+  // Check if we found all 4 edges
+  const foundAllEdges = topEdge > 0 && bottomEdge > 0 && leftEdge > 0 && rightEdge > 0;
+  const foundEdgesCount = [topEdge > 0, bottomEdge > 0, leftEdge > 0, rightEdge > 0].filter(Boolean).length;
+
+  // Debug logging
+  console.log('[DocumentDetector] Scan:', {
+    edges: { top: topEdge, bottom: bottomEdge, left: leftEdge, right: rightEdge },
+    foundEdgesCount,
+    frameSize: { width, height },
+  });
+
+  if (!foundAllEdges) {
     return createEmptyResult();
   }
 
-  // Calculate aspect ratio and confidence
-  const aspectRatio = bounds.width / bounds.height;
-  const isValidAspectRatio = isAspectRatioValid(aspectRatio);
-  const coverage = (bounds.width * bounds.height) / (width * height);
+  // Validate the detected rectangle
+  const detectedWidth = rightEdge - leftEdge;
+  const detectedHeight = bottomEdge - topEdge;
+  const aspectRatio = detectedWidth / detectedHeight;
+  const coverage = (detectedWidth * detectedHeight) / (width * height);
 
-  const confidence = isValidAspectRatio && coverage >= MIN_COVERAGE
-    ? Math.min(0.5 + coverage * 0.5, 0.95)
-    : 0.3;
+  const isValidSize = coverage >= 0.15 && coverage <= 0.85;
+  const isValidAspect = isAspectRatioValid(aspectRatio);
+
+  // Calculate confidence
+  let confidence = 0.4; // Base for finding 4 edges
+  if (isValidSize) confidence += 0.3;
+  if (isValidAspect) confidence += 0.3;
+
+  const detected = foundAllEdges && isValidSize;
+
+  console.log('[DocumentDetector] Result:', {
+    bounds: { x: leftEdge, y: topEdge, width: detectedWidth, height: detectedHeight },
+    aspectRatio: aspectRatio.toFixed(2),
+    coverage: (coverage * 100).toFixed(1) + '%',
+    checks: { isValidSize, isValidAspect },
+    confidence: confidence.toFixed(2),
+    detected,
+  });
+
+  const bounds: BoundingBox = {
+    x: leftEdge,
+    y: topEdge,
+    width: detectedWidth,
+    height: detectedHeight,
+  };
 
   return {
-    detected: confidence > 0.5,
+    detected,
     confidence,
-    bounds,
-    corners: extractCorners(bounds),
-    aspectRatio,
+    bounds: detected ? bounds : null,
+    corners: detected ? extractCorners(bounds) : null,
+    aspectRatio: detected ? aspectRatio : null,
   };
 }
 
@@ -278,53 +339,6 @@ async function findDocumentBounds(
   }
 }
 
-/**
- * Find rectangular region from brightness/edge grid
- */
-function findRectangularRegion(
-  brightness: number[][],
-  edges: number[][],
-  cellWidth: number,
-  cellHeight: number
-): BoundingBox | null {
-  const gridSize = brightness.length;
-
-  // Find cells with document-like brightness (not too dark, not pure white)
-  const documentCells: [number, number][] = [];
-
-  for (let y = 0; y < gridSize; y++) {
-    for (let x = 0; x < gridSize; x++) {
-      const b = brightness[y][x];
-      const e = edges[y][x];
-
-      // Document cells: moderate brightness, some edge activity
-      if (b > 50 && b < 240 && e > 0.01) {
-        documentCells.push([x, y]);
-      }
-    }
-  }
-
-  if (documentCells.length < 4) {
-    return null;
-  }
-
-  // Find bounding rectangle
-  let minX = gridSize, minY = gridSize, maxX = 0, maxY = 0;
-
-  for (const [x, y] of documentCells) {
-    minX = Math.min(minX, x);
-    minY = Math.min(minY, y);
-    maxX = Math.max(maxX, x);
-    maxY = Math.max(maxY, y);
-  }
-
-  return {
-    x: minX * cellWidth,
-    y: minY * cellHeight,
-    width: (maxX - minX + 1) * cellWidth,
-    height: (maxY - minY + 1) * cellHeight,
-  };
-}
 
 /**
  * Validate aspect ratio for ID card

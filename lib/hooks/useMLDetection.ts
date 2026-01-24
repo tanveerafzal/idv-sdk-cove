@@ -9,6 +9,7 @@ import {
   getStatusMessage,
   isAnalyzerReady,
   disposeAnalyzer,
+  resetMotionHistory,
 } from '../ml';
 import { useFrameProcessor } from './useFrameProcessor';
 
@@ -64,7 +65,7 @@ export function useMLDetection(options: UseMLDetectionOptions = {}): UseMLDetect
   } = useFrameProcessor({
     targetFps: mergedConfig.frameRateTarget,
     enabled,
-    downscale: 2, // Downscale for faster processing
+    downscale: 1, // No downscale - use full resolution for accurate bounds
   });
 
   // Initialize ML analyzer
@@ -120,6 +121,7 @@ export function useMLDetection(options: UseMLDetectionOptions = {}): UseMLDetect
     if (!enabled) return;
 
     videoRef.current = video;
+    resetMotionHistory(); // Clear motion history for new session
 
     // Wait for analyzer to be ready
     const startWhenReady = () => {
@@ -137,6 +139,7 @@ export function useMLDetection(options: UseMLDetectionOptions = {}): UseMLDetect
   // Stop detection
   const stopDetection = useCallback(() => {
     stopProcessing();
+    resetMotionHistory(); // Clear motion history
     videoRef.current = null;
     setResult(null);
     setStatusMessage('Position ID card in frame');

@@ -435,9 +435,13 @@ class IDVCore {
             this.startTime = Date.now();
             // Build iframe URL
             const iframeSrc = this.buildIframeUrl(options);
-            // Set up message bus
+            // Set up message bus - allow both configured origin and actual iframe origin
             const verifyOrigin = this.getVerifyOrigin();
-            this.messageBus = new MessageBus([verifyOrigin], this.config.debug);
+            const iframeOrigin = new URL(iframeSrc).origin;
+            const allowedOrigins = verifyOrigin === iframeOrigin
+                ? [verifyOrigin]
+                : [verifyOrigin, iframeOrigin];
+            this.messageBus = new MessageBus(allowedOrigins, this.config.debug);
             this.setupMessageHandlers(resolve, reject);
             // Create and open modal
             this.modalManager = new ModalManager({

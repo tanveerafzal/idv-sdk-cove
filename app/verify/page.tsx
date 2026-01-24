@@ -298,7 +298,12 @@ function VerifyPageContent() {
 
       // Step 3: Submit and get result
       setProcessingStatus('Completing verification...')
+      const submitStartTime = Date.now()
+      console.log('[submitVerification] Start:', new Date(submitStartTime).toISOString())
       const result = await submitVerification(verificationId, partnerId || undefined, userId || undefined)
+      const submitEndTime = Date.now()
+      console.log('[submitVerification] End:', new Date(submitEndTime).toISOString())
+      console.log('[submitVerification] Duration:', (submitEndTime - submitStartTime) / 1000, 'seconds')
       setVerificationResult(result)
 
       // Check if verification failed and retry is allowed
@@ -469,7 +474,7 @@ function VerifyPageContent() {
           <div className="flex flex-col w-full h-full">
             <div className="space-y-3">
               <h1 className="text-2xl font-bold text-gray-900">
-                Let's get started <span className="text-white text-sm font-normal">v1.23.1</span>
+                Let's get started <span className="text-white text-sm font-normal">v1.24.2</span>
               </h1>
               <p className="text-gray-500 text-sm">
                 Verify your identity to keep your account secure.
@@ -513,7 +518,7 @@ function VerifyPageContent() {
             </div>
 
             {/* QR Code for desktop users to switch to mobile */}
-            {isDesktop && mobileVerifyUrl ? (
+            {isDesktop && mobileVerifyUrl && (
               <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
                 <p className="text-sm font-medium text-gray-700 text-center mb-3">
                   Scan to continue on mobile
@@ -530,12 +535,6 @@ function VerifyPageContent() {
                 </div>
                 <p className="text-xs text-gray-500 text-center mt-2">
                   For best results, use your phone's camera
-                </p>
-              </div>
-            ) : (
-              <div className="mt-8 p-3 bg-blue-50 rounded-lg border border-blue-100">
-                <p className="text-xs text-blue-700 text-center">
-                  For best results, use a mobile device with a good camera.
                 </p>
               </div>
             )}

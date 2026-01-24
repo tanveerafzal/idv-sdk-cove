@@ -60,4 +60,5 @@ export {
   getStatusMessage,
   isAnalyzerReady,
   disposeAnalyzer,
+  resetMotionHistory,
 } from './frame-analyzer';
