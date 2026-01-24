@@ -21,7 +21,6 @@ const MAX_COVERAGE = 0.95;  // Document shouldn't cover more than 95%
 
 // Edge detection thresholds
 const EDGE_LOW_THRESHOLD = 50;
-const EDGE_HIGH_THRESHOLD = 150;
 
 /**
  * Detect document in image using edge detection
@@ -38,7 +37,7 @@ export async function detectDocument(imageData: ImageData): Promise<DocumentDete
   try {
     // Convert to grayscale
     const tensor = tf.browser.fromPixels(imageData);
-    grayscale = tf.mean(tensor, 2) as import('@tensorflow/tfjs').Tensor2D;
+    grayscale = tf.mean(tensor, 2);
     tensor.dispose();
 
     // Apply Gaussian blur to reduce noise
@@ -61,7 +60,6 @@ export async function detectDocument(imageData: ImageData): Promise<DocumentDete
 
     // Validate coverage
     const coverage = (bounds.width * bounds.height) / (imageData.width * imageData.height);
-    const isValidCoverage = coverage >= MIN_COVERAGE && coverage <= MAX_COVERAGE;
 
     // Calculate confidence based on edge strength and geometry
     const confidence = calculateConfidence(bounds, aspectRatio, coverage, isValidAspectRatio);
@@ -169,34 +167,34 @@ export async function detectDocumentFast(imageData: ImageData): Promise<Document
 /**
  * Apply Gaussian blur to reduce noise
  */
-async function applyGaussianBlur(
-  tensor: import('@tensorflow/tfjs').Tensor2D
-): Promise<import('@tensorflow/tfjs').Tensor2D> {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function applyGaussianBlur(tensor: any): Promise<any> {
   const tf = getTensorFlow();
 
   // 3x3 Gaussian kernel
   const gaussianKernel = tf.tensor4d(
-    [1, 2, 1, 2, 4, 2, 1, 2, 1].map(v => v / 16),
+    [1, 2, 1, 2, 4, 2, 1, 2, 1].map((v: number) => v / 16),
     [3, 3, 1, 1]
   );
 
-  const input = tensor.expandDims(0).expandDims(-1) as import('@tensorflow/tfjs').Tensor4D;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const input = tensor.expandDims(0).expandDims(-1) as any;
   const blurred = tf.conv2d(input, gaussianKernel, 1, 'same');
 
   gaussianKernel.dispose();
 
-  return blurred.squeeze([0, 3]) as import('@tensorflow/tfjs').Tensor2D;
+  return blurred.squeeze([0, 3]);
 }
 
 /**
  * Detect edges using Sobel operators
  */
-async function detectEdges(
-  tensor: import('@tensorflow/tfjs').Tensor2D
-): Promise<import('@tensorflow/tfjs').Tensor2D> {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function detectEdges(tensor: any): Promise<any> {
   const tf = getTensorFlow();
 
-  const input = tensor.expandDims(0).expandDims(-1) as import('@tensorflow/tfjs').Tensor4D;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const input = tensor.expandDims(0).expandDims(-1) as any;
 
   // Sobel X
   const sobelX = tf.tensor4d(
@@ -221,14 +219,15 @@ async function detectEdges(
   gx.dispose();
   gy.dispose();
 
-  return magnitude.squeeze([0, 3]) as import('@tensorflow/tfjs').Tensor2D;
+  return magnitude.squeeze([0, 3]);
 }
 
 /**
  * Find document bounds from edge image
  */
 async function findDocumentBounds(
-  edges: import('@tensorflow/tfjs').Tensor2D,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  edges: any,
   width: number,
   height: number
 ): Promise<BoundingBox | null> {
@@ -363,10 +362,6 @@ function calculateConfidence(
   }
 
   // Boost for centered document
-  const centerX = bounds.x + bounds.width / 2;
-  const centerY = bounds.y + bounds.height / 2;
-  // Assuming normalized coordinates would be better here
-
   confidence += 0.2; // Default centering bonus
 
   return Math.min(confidence, 1);

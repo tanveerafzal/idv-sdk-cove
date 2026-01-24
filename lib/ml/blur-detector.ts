@@ -47,7 +47,8 @@ export async function detectBlur(imageData: ImageData): Promise<BlurDetectionRes
     grayscale = imageDataToGrayscale(imageData);
 
     // Reshape for conv2d: [batch, height, width, channels]
-    const input = grayscale.expandDims(0).expandDims(-1) as import('@tensorflow/tfjs').Tensor4D;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const input = grayscale.expandDims(0).expandDims(-1) as any;
 
     // Create Laplacian kernel tensor [height, width, inChannels, outChannels]
     kernel = tf.tensor4d(
@@ -119,10 +120,12 @@ export async function detectBlurFast(imageData: ImageData): Promise<BlurDetectio
     const newHeight = Math.round(imageData.height * scale);
 
     if (scale < 1) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const expanded = grayscale.expandDims(0).expandDims(-1) as any;
       downsampled = tf.image.resizeBilinear(
-        grayscale.expandDims(0).expandDims(-1) as import('@tensorflow/tfjs').Tensor4D,
+        expanded,
         [newHeight, newWidth]
-      ).squeeze([0, 3]) as import('@tensorflow/tfjs').Tensor2D;
+      ).squeeze([0, 3]);
       grayscale.dispose();
       grayscale = downsampled;
     }
@@ -133,28 +136,19 @@ export async function detectBlurFast(imageData: ImageData): Promise<BlurDetectio
     const variance = await tf.mean(squaredDiff).data();
 
     // Apply Sobel-like edge detection for faster blur estimation
-    // Note: tensor4d requires flat array when shape is specified
     const sobelXKernel = tf.tensor4d(
-      [-1, 0, 1, -2, 0, 2, -1, 0, 1],  // Flattened 3x3 kernel
+      [-1, 0, 1, -2, 0, 2, -1, 0, 1],
       [3, 3, 1, 1]
     );
     const sobelYKernel = tf.tensor4d(
-      [-1, -2, -1, 0, 0, 0, 1, 2, 1],  // Flattened 3x3 kernel
+      [-1, -2, -1, 0, 0, 0, 1, 2, 1],
       [3, 3, 1, 1]
     );
 
-    const sobelX = tf.conv2d(
-      grayscale.expandDims(0).expandDims(-1) as import('@tensorflow/tfjs').Tensor4D,
-      sobelXKernel,
-      1,
-      'same'
-    );
-    const sobelY = tf.conv2d(
-      grayscale.expandDims(0).expandDims(-1) as import('@tensorflow/tfjs').Tensor4D,
-      sobelYKernel,
-      1,
-      'same'
-    );
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const expanded = grayscale.expandDims(0).expandDims(-1) as any;
+    const sobelX = tf.conv2d(expanded, sobelXKernel, 1, 'same');
+    const sobelY = tf.conv2d(expanded, sobelYKernel, 1, 'same');
     const gradient = tf.sqrt(tf.add(tf.square(sobelX), tf.square(sobelY)));
     const edgeVariance = await tf.mean(gradient).data();
 
@@ -165,6 +159,7 @@ export async function detectBlurFast(imageData: ImageData): Promise<BlurDetectio
     sobelX.dispose();
     sobelY.dispose();
     gradient.dispose();
+    expanded.dispose();
 
     const score = normalizeBlurScore(edgeVariance[0] * 100);
     const isBlurry = edgeVariance[0] < 5; // Low edge response = blurry

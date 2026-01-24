@@ -44,7 +44,7 @@ export async function detectGlare(imageData: ImageData): Promise<GlareDetectionR
         tf.mul(g.squeeze([2]), 0.587)
       ),
       tf.mul(b.squeeze([2]), 0.114)
-    ) as import('@tensorflow/tfjs').Tensor2D;
+    );
 
     r.dispose();
     g.dispose();
@@ -63,7 +63,7 @@ export async function detectGlare(imageData: ImageData): Promise<GlareDetectionR
     const hotspotCount = await countHotspots(imageData, brightness);
 
     // Calculate saturation in bright areas to distinguish glare from white content
-    const glareConfidence = await analyzeGlareConfidence(imageData, brightness);
+    const glareConfidence = await analyzeGlareConfidence(imageData);
 
     brightness.dispose();
     brightPixelMask.dispose();
@@ -147,11 +147,10 @@ export async function detectGlareFast(imageData: ImageData): Promise<GlareDetect
  * Calculate brightness histogram
  */
 async function calculateHistogram(
-  brightness: import('@tensorflow/tfjs').Tensor2D,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  brightness: any,
   bins: number
 ): Promise<number[]> {
-  const tf = getTensorFlow();
-
   try {
     const data = await brightness.data();
     const histogram = new Array(bins).fill(0);
@@ -163,7 +162,7 @@ async function calculateHistogram(
 
     // Normalize
     const total = data.length;
-    return histogram.map(count => count / total);
+    return histogram.map((count: number) => count / total);
   } catch {
     return new Array(bins).fill(0);
   }
@@ -174,7 +173,8 @@ async function calculateHistogram(
  */
 async function countHotspots(
   imageData: ImageData,
-  brightness: import('@tensorflow/tfjs').Tensor2D
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  brightness: any
 ): Promise<number> {
   const tf = getTensorFlow();
 
@@ -183,8 +183,10 @@ async function countHotspots(
     const mask = tf.greater(brightness, BRIGHTNESS_THRESHOLD);
 
     // Downsample for faster processing
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const expanded = mask.expandDims(0).expandDims(-1) as any;
     const downsampled = tf.image.resizeNearestNeighbor(
-      mask.expandDims(0).expandDims(-1) as import('@tensorflow/tfjs').Tensor4D,
+      expanded,
       [Math.floor(imageData.height / 4), Math.floor(imageData.width / 4)]
     );
 
@@ -217,8 +219,7 @@ async function countHotspots(
  * Analyze glare confidence by checking saturation in bright areas
  */
 async function analyzeGlareConfidence(
-  imageData: ImageData,
-  brightness: import('@tensorflow/tfjs').Tensor2D
+  imageData: ImageData
 ): Promise<number> {
   const data = imageData.data;
   let glarePixels = 0;

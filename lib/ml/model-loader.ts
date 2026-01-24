@@ -5,12 +5,14 @@
 
 import type { DetectorStatus } from './types';
 
-// Lazy imports to prevent SSR issues
-let tf: typeof import('@tensorflow/tfjs') | null = null;
-let blazeface: typeof import('@tensorflow-models/blazeface') | null = null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let tf: any = null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let blazeface: any = null;
 
 interface LoadedModels {
-  blazeface: Awaited<ReturnType<typeof import('@tensorflow-models/blazeface')['load']>> | null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  blazeface: any;
 }
 
 const loadedModels: LoadedModels = {
@@ -92,7 +94,8 @@ export async function loadBlazeFaceModel(): Promise<typeof loadedModels.blazefac
 /**
  * Get TensorFlow.js instance (must be initialized first)
  */
-export function getTensorFlow(): typeof import('@tensorflow/tfjs') {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function getTensorFlow(): any {
   if (!tf) {
     throw new Error('TensorFlow.js not initialized. Call initializeTensorFlow() first.');
   }
@@ -137,7 +140,8 @@ export async function disposeModels(): Promise<void> {
 /**
  * Create an image tensor from ImageData for processing
  */
-export function imageDataToTensor(imageData: ImageData): import('@tensorflow/tfjs').Tensor3D {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function imageDataToTensor(imageData: ImageData): any {
   if (!tf) {
     throw new Error('TensorFlow.js not initialized');
   }
@@ -148,14 +152,15 @@ export function imageDataToTensor(imageData: ImageData): import('@tensorflow/tfj
 /**
  * Create a grayscale tensor from ImageData
  */
-export function imageDataToGrayscale(imageData: ImageData): import('@tensorflow/tfjs').Tensor2D {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function imageDataToGrayscale(imageData: ImageData): any {
   if (!tf) {
     throw new Error('TensorFlow.js not initialized');
   }
 
   const tensor = tf.browser.fromPixels(imageData);
   // Convert to grayscale using luminosity method
-  const grayscale = tf.mean(tensor, 2) as import('@tensorflow/tfjs').Tensor2D;
+  const grayscale = tf.mean(tensor, 2);
   tensor.dispose();
   return grayscale;
 }
@@ -163,7 +168,8 @@ export function imageDataToGrayscale(imageData: ImageData): import('@tensorflow/
 /**
  * Cleanup a tensor after use
  */
-export function disposeTensor(tensor: import('@tensorflow/tfjs').Tensor | null): void {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function disposeTensor(tensor: any): void {
   if (tensor && !tensor.isDisposed) {
     tensor.dispose();
   }
