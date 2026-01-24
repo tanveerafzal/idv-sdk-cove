@@ -47,7 +47,6 @@ export interface VerificationData {
   retakeDocument?: boolean
   retakeDocumentBack?: boolean
   retakeSelfie?: boolean
-  extractedData?: ExtractedIDData | null // Client-side extracted data for preview
 }
 
 function VerifyPageContent() {
