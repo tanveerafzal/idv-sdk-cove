@@ -90,10 +90,15 @@ const IDCaptureOverlay = ({
     }
   }, [enableMLDetection, videoRef, startDetection, stopDetection])
 
-  // Detect actual device type using screen width
+  // Detect desktop vs mobile context using innerWidth
+  // This handles both actual mobile devices AND desktop SDK embeds with narrow iframes
   useEffect(() => {
-    const actualScreenWidth = window.screen.width
-    setIsDesktop(actualScreenWidth >= 768)
+    const updateDesktopState = () => {
+      setIsDesktop(window.innerWidth >= 768)
+    }
+    updateDesktopState()
+    window.addEventListener('resize', updateDesktopState)
+    return () => window.removeEventListener('resize', updateDesktopState)
   }, [])
 
   const getDocumentLabel = () => {
@@ -326,8 +331,9 @@ const IDScannerFrame = ({
       const idCardAspectRatio = 1.586
       const containerWidth = window.innerWidth
       const containerHeight = window.innerHeight
-      const actualScreenWidth = window.screen.width
-      const mobile = actualScreenWidth < 768
+      // Use innerWidth to detect mobile context - this handles both actual mobile devices
+      // AND desktop SDK embeds where the iframe is narrow (e.g., 420px modal)
+      const mobile = containerWidth < 768
       setIsMobile(mobile)
 
       let width: number
