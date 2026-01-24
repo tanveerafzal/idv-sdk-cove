@@ -35,6 +35,8 @@ import {
   type VerificationResult,
   type PartnerInfo,
 } from '@/lib/api'
+import type { ExtractedIDData } from '@/lib/ocr'
+
 export type VerificationStep = 1 | 2 | 3 | 3.5 | 4 | 5 | 6 | 7 | 7.5 | 8
 
 export interface VerificationData {
@@ -46,6 +48,7 @@ export interface VerificationData {
   retakeDocument?: boolean
   retakeDocumentBack?: boolean
   retakeSelfie?: boolean
+  extractedData?: ExtractedIDData | null // Client-side extracted data for preview
 }
 
 function VerifyPageContent() {
@@ -450,7 +453,7 @@ function VerifyPageContent() {
           <div className="flex flex-col w-full h-full">
             <div className="space-y-3">
               <h1 className="text-2xl font-bold text-gray-900">
-                Let's get started <span className="text-white text-sm font-normal">v1.0.0</span>
+                Let's get started <span className="text-white text-sm font-normal">v1.23.1</span>
               </h1>
               <p className="text-gray-500 text-sm">
                 Verify your identity to keep your account secure.
