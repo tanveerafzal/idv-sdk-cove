@@ -95,6 +95,20 @@ function VerifyPageContent() {
     }
   }, [])
 
+  // TEMPORARY: Load Eruda mobile console for debugging
+  useEffect(() => {
+    const script = document.createElement('script')
+    script.src = 'https://cdn.jsdelivr.net/npm/eruda'
+    script.onload = () => {
+      // @ts-expect-error eruda is loaded globally
+      if (window.eruda) window.eruda.init()
+    }
+    document.body.appendChild(script)
+    return () => {
+      script.remove()
+    }
+  }, [])
+
   // SDK messaging helper
   const sendSDKMessage = useCallback(<T,>(type: Parameters<typeof sendToParent>[0], payload: T) => {
     if (sdkMode) {
@@ -474,7 +488,7 @@ function VerifyPageContent() {
           <div className="flex flex-col w-full h-full">
             <div className="space-y-3">
               <h1 className="text-2xl font-bold text-gray-900">
-                Let's get started <span className="text-white text-sm font-normal">v1.24.2</span>
+                Let's get started <span className="text-gray-400 text-xs font-normal ml-2">v1.25.1</span>
               </h1>
               <p className="text-gray-500 text-sm">
                 Verify your identity to keep your account secure.
