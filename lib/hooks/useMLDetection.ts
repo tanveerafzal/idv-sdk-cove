@@ -47,10 +47,16 @@ export function useMLDetection(options: UseMLDetectionOptions = {}): UseMLDetect
     onDetectionResult,
   } = options;
 
-  // Use lower frame rate on mobile to prevent crashes
+  // Use lower frame rate, downscaled frames, and no face detection on mobile to prevent memory crashes
   const isMobile = isMobileDevice();
-  const mobileFrameRate = isMobile ? 5 : (config.frameRateTarget ?? DEFAULT_DETECTION_CONFIG.frameRateTarget);
-  const mergedConfig = { ...DEFAULT_DETECTION_CONFIG, ...config, frameRateTarget: mobileFrameRate };
+  const mobileFrameRate = isMobile ? 3 : (config.frameRateTarget ?? DEFAULT_DETECTION_CONFIG.frameRateTarget);
+  const mergedConfig = {
+    ...DEFAULT_DETECTION_CONFIG,
+    ...config,
+    frameRateTarget: mobileFrameRate,
+    // Disable face detection on mobile - saves ~50MB (BlazeFace model)
+    enableFaceDetection: isMobile ? false : (config.enableFaceDetection ?? DEFAULT_DETECTION_CONFIG.enableFaceDetection),
+  };
 
   const [result, setResult] = useState<DetectionResult | null>(null);
   const [statusMessage, setStatusMessage] = useState<DetectionStatusMessage>('Position ID card in frame');
@@ -67,6 +73,7 @@ export function useMLDetection(options: UseMLDetectionOptions = {}): UseMLDetect
   }, [onDetectionResult]);
 
   // Frame processor for extracting video frames
+  // Mobile: downscale 4x to reduce memory (1920x1080 -> 480x270, ~0.5MB vs ~8MB per frame)
   const {
     startProcessing,
     stopProcessing,
@@ -75,7 +82,7 @@ export function useMLDetection(options: UseMLDetectionOptions = {}): UseMLDetect
   } = useFrameProcessor({
     targetFps: mergedConfig.frameRateTarget,
     enabled,
-    downscale: 1, // No downscale - use full resolution for accurate bounds
+    downscale: isMobile ? 4 : 2,
   });
 
   // Initialize ML analyzer

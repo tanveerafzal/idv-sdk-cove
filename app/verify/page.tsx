@@ -576,7 +576,7 @@ function VerifyPageContent() {
                     'Agree and continue'
                   )}
                 </Button>
-                <p className="text-center text-gray-300 text-xs mt-2">v1.25.1</p>
+                <p className="text-center text-gray-300 text-xs mt-2">v1.25.3</p>
               </div>
             </div>
           </div>
