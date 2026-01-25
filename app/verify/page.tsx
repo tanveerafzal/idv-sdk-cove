@@ -488,7 +488,7 @@ function VerifyPageContent() {
           <div className="flex flex-col w-full h-full">
             <div className="space-y-3">
               <h1 className="text-2xl font-bold text-gray-900">
-                Let's get started <span className="text-gray-400 text-xs font-normal ml-2">v1.25.1</span>
+                Let's get started
               </h1>
               <p className="text-gray-500 text-sm">
                 Verify your identity to keep your account secure.
@@ -576,6 +576,7 @@ function VerifyPageContent() {
                     'Agree and continue'
                   )}
                 </Button>
+                <p className="text-center text-gray-300 text-xs mt-2">v1.25.1</p>
               </div>
             </div>
           </div>
