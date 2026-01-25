@@ -12,6 +12,13 @@ import {
   resetMotionHistory,
 } from '../ml';
 import { useFrameProcessor } from './useFrameProcessor';
+import { logError, logException, logInfo } from '../error-logger';
+
+// Detect mobile device for performance optimization
+function isMobileDevice(): boolean {
+  if (typeof window === 'undefined') return false;
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+}
 
 interface UseMLDetectionOptions {
   config?: Partial<DetectionConfig>;
@@ -40,7 +47,10 @@ export function useMLDetection(options: UseMLDetectionOptions = {}): UseMLDetect
     onDetectionResult,
   } = options;
 
-  const mergedConfig = { ...DEFAULT_DETECTION_CONFIG, ...config };
+  // Use lower frame rate on mobile to prevent crashes
+  const isMobile = isMobileDevice();
+  const mobileFrameRate = isMobile ? 5 : (config.frameRateTarget ?? DEFAULT_DETECTION_CONFIG.frameRateTarget);
+  const mergedConfig = { ...DEFAULT_DETECTION_CONFIG, ...config, frameRateTarget: mobileFrameRate };
 
   const [result, setResult] = useState<DetectionResult | null>(null);
   const [statusMessage, setStatusMessage] = useState<DetectionStatusMessage>('Position ID card in frame');
@@ -79,15 +89,19 @@ export function useMLDetection(options: UseMLDetectionOptions = {}): UseMLDetect
         if (success) {
           setIsReady(true);
           setError(null);
-          console.log('[useMLDetection] Analyzer initialized');
+          logInfo('ML Analyzer initialized', { component: 'useMLDetection', isMobile });
         } else {
           setError('Failed to initialize ML analyzer');
-          console.error('[useMLDetection] Analyzer initialization failed');
+          logError('ML Analyzer initialization failed', { component: 'useMLDetection', isMobile });
         }
       })
       .catch((err) => {
         setError(err.message || 'Failed to initialize ML');
-        console.error('[useMLDetection] Initialization error:', err);
+        logException(err instanceof Error ? err : new Error(String(err)), {
+          component: 'useMLDetection',
+          action: 'initializeAnalyzer',
+          isMobile,
+        });
       })
       .finally(() => {
         isInitializingRef.current = false;
@@ -112,7 +126,10 @@ export function useMLDetection(options: UseMLDetectionOptions = {}): UseMLDetect
       // Call external callback
       onDetectionResultRef.current?.(detectionResult);
     } catch (err) {
-      console.error('[useMLDetection] Detection error:', err);
+      logException(err instanceof Error ? err : new Error(String(err)), {
+        component: 'useMLDetection',
+        action: 'processDetection',
+      });
     }
   }, [mergedConfig]);
 

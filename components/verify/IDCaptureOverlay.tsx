@@ -9,6 +9,7 @@ import { useAutoCapture } from '@/lib/hooks/useAutoCapture'
 import { DetectionFeedback, DetectionMessage } from './DetectionFeedback'
 import { AutoCaptureProgress, CapturingOverlay } from './AutoCaptureProgress'
 import type { DetectionConfig, DetectionResult } from '@/lib/ml/types'
+import { logInfo, logException } from '@/lib/error-logger'
 
 interface IDCaptureOverlayProps {
   documentType: string
@@ -171,12 +172,31 @@ const IDCaptureOverlay = ({
   }, [captureImage, stopDetection, onCapture])
 
   const handleAutoCapture = useCallback(() => {
-    setIsCapturing(true)
-    // Small delay for visual feedback
-    setTimeout(() => {
-      handleCapture()
-    }, 200)
-  }, [handleCapture])
+    try {
+      logInfo('Auto-capture triggered', { component: 'IDCaptureOverlay', documentType, isBackSide })
+      setIsCapturing(true)
+      // Small delay for visual feedback
+      setTimeout(() => {
+        try {
+          handleCapture()
+        } catch (error) {
+          logException(error instanceof Error ? error : new Error(String(error)), {
+            component: 'IDCaptureOverlay',
+            action: 'handleCapture',
+            documentType,
+            isBackSide,
+          })
+        }
+      }, 200)
+    } catch (error) {
+      logException(error instanceof Error ? error : new Error(String(error)), {
+        component: 'IDCaptureOverlay',
+        action: 'handleAutoCapture',
+        documentType,
+        isBackSide,
+      })
+    }
+  }, [handleCapture, documentType, isBackSide])
 
   const handleManualCapture = () => {
     resetAutoCapture()

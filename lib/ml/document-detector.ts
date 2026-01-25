@@ -171,14 +171,6 @@ export async function detectDocumentFast(imageData: ImageData): Promise<Document
 
   // Check if we found all 4 edges
   const foundAllEdges = topEdge > 0 && bottomEdge > 0 && leftEdge > 0 && rightEdge > 0;
-  const foundEdgesCount = [topEdge > 0, bottomEdge > 0, leftEdge > 0, rightEdge > 0].filter(Boolean).length;
-
-  // Debug logging
-  console.log('[DocumentDetector] Scan:', {
-    edges: { top: topEdge, bottom: bottomEdge, left: leftEdge, right: rightEdge },
-    foundEdgesCount,
-    frameSize: { width, height },
-  });
 
   if (!foundAllEdges) {
     return createEmptyResult();
@@ -199,15 +191,6 @@ export async function detectDocumentFast(imageData: ImageData): Promise<Document
   if (isValidAspect) confidence += 0.3;
 
   const detected = foundAllEdges && isValidSize;
-
-  console.log('[DocumentDetector] Result:', {
-    bounds: { x: leftEdge, y: topEdge, width: detectedWidth, height: detectedHeight },
-    aspectRatio: aspectRatio.toFixed(2),
-    coverage: (coverage * 100).toFixed(1) + '%',
-    checks: { isValidSize, isValidAspect },
-    confidence: confidence.toFixed(2),
-    detected,
-  });
 
   const bounds: BoundingBox = {
     x: leftEdge,

@@ -17,6 +17,7 @@ import { detectBlurFast } from './blur-detector';
 import { detectGlareFast } from './glare-detector';
 import { detectFace, initFaceDetector, isFaceDetectorReady } from './face-detector';
 import { detectDocumentFast } from './document-detector';
+import { logError, logException } from '../error-logger';
 
 // Import default config
 import { DEFAULT_DETECTION_CONFIG as defaultConfig } from './types';
@@ -72,7 +73,10 @@ export async function initializeAnalyzer(): Promise<boolean> {
       isInitialized = true;
       console.log('[FrameAnalyzer] Initialization complete');
     } catch (error) {
-      console.error('[FrameAnalyzer] Initialization failed:', error);
+      logException(error instanceof Error ? error : new Error(String(error)), {
+        component: 'FrameAnalyzer',
+        action: 'initialize',
+      });
       isInitialized = false;
     }
   })();
@@ -186,7 +190,10 @@ export async function analyzeFrame(
 
     return result;
   } catch (error) {
-    console.error('[FrameAnalyzer] Frame analysis error:', error);
+    logException(error instanceof Error ? error : new Error(String(error)), {
+      component: 'FrameAnalyzer',
+      action: 'analyzeFrame',
+    });
     return result;
   }
 }
