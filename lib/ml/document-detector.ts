@@ -96,10 +96,12 @@ export async function detectDocumentFast(imageData: ImageData): Promise<Document
     return 0.299 * data[idx] + 0.587 * data[idx + 1] + 0.114 * data[idx + 2];
   };
 
-  // Scan parameters
-  const scanStep = 2;
-  const edgeThreshold = 35;
-  const minEdgeRun = 20; // Minimum continuous edge length
+  // Adaptive scan parameters based on image resolution
+  // Lower resolution (from downscaling) needs softer thresholds
+  const minDim = Math.min(width, height);
+  const scanStep = minDim > 500 ? 2 : 1;
+  const edgeThreshold = minDim > 500 ? 35 : 20; // Softer threshold for downscaled images
+  const minEdgeRun = Math.max(5, Math.floor(minDim * 0.025)); // ~2.5% of smallest dimension
 
   // Find TOP edge - scan from top down, looking for bright-to-dark or dark-to-bright transition
   let topEdge = -1;
