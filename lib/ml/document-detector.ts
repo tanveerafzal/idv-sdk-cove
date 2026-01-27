@@ -96,10 +96,12 @@ export async function detectDocumentFast(imageData: ImageData): Promise<Document
     return 0.299 * data[idx] + 0.587 * data[idx + 1] + 0.114 * data[idx + 2];
   };
 
-  // Scan parameters
-  const scanStep = 2;
-  const edgeThreshold = 35;
-  const minEdgeRun = 20; // Minimum continuous edge length
+  // Adaptive scan parameters based on image resolution
+  // Lower resolution (from downscaling) needs softer thresholds
+  const minDim = Math.min(width, height);
+  const scanStep = minDim > 500 ? 2 : 1;
+  const edgeThreshold = minDim > 500 ? 35 : 20; // Softer threshold for downscaled images
+  const minEdgeRun = Math.max(5, Math.floor(minDim * 0.025)); // ~2.5% of smallest dimension
 
   // Find TOP edge - scan from top down, looking for bright-to-dark or dark-to-bright transition
   let topEdge = -1;
@@ -171,14 +173,6 @@ export async function detectDocumentFast(imageData: ImageData): Promise<Document
 
   // Check if we found all 4 edges
   const foundAllEdges = topEdge > 0 && bottomEdge > 0 && leftEdge > 0 && rightEdge > 0;
-  const foundEdgesCount = [topEdge > 0, bottomEdge > 0, leftEdge > 0, rightEdge > 0].filter(Boolean).length;
-
-  // Debug logging
-  console.log('[DocumentDetector] Scan:', {
-    edges: { top: topEdge, bottom: bottomEdge, left: leftEdge, right: rightEdge },
-    foundEdgesCount,
-    frameSize: { width, height },
-  });
 
   if (!foundAllEdges) {
     return createEmptyResult();
@@ -199,15 +193,6 @@ export async function detectDocumentFast(imageData: ImageData): Promise<Document
   if (isValidAspect) confidence += 0.3;
 
   const detected = foundAllEdges && isValidSize;
-
-  console.log('[DocumentDetector] Result:', {
-    bounds: { x: leftEdge, y: topEdge, width: detectedWidth, height: detectedHeight },
-    aspectRatio: aspectRatio.toFixed(2),
-    coverage: (coverage * 100).toFixed(1) + '%',
-    checks: { isValidSize, isValidAspect },
-    confidence: confidence.toFixed(2),
-    detected,
-  });
 
   const bounds: BoundingBox = {
     x: leftEdge,

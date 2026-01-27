@@ -39,7 +39,7 @@ export {
 } from './model-loader';
 
 // Individual detectors
-export { detectBlur, detectBlurFast, getBlurStatus } from './blur-detector';
+export { detectBlurFast, getBlurStatus } from './blur-detector';
 export { detectGlare, detectGlareFast, getGlareStatus } from './glare-detector';
 export {
   detectFace,

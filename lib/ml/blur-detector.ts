@@ -1,180 +1,82 @@
 /**
  * Blur Detection using Laplacian Variance Method
  *
- * Uses TensorFlow.js for GPU-accelerated computation of the Laplacian
- * variance, which is a reliable indicator of image sharpness.
+ * Uses pure JavaScript for zero GPU memory usage.
+ * Laplacian variance is a reliable indicator of image sharpness.
  * Lower variance = blurrier image
  */
 
 import type { BlurDetectionResult } from './types';
-import { getTensorFlow, isTensorFlowReady, imageDataToGrayscale, disposeTensor } from './model-loader';
-
-// Laplacian kernel for edge detection (approximates second derivative)
-const LAPLACIAN_KERNEL = [
-  [0, 1, 0],
-  [1, -4, 1],
-  [0, 1, 0],
-];
 
 // Threshold for blur detection (lower variance = blurrier)
-// These values are calibrated for typical webcam/phone cameras
 const BLUR_THRESHOLD_LOW = 100;   // Below this = very blurry
 const BLUR_THRESHOLD_HIGH = 500;  // Above this = sharp
+const EDGE_THRESHOLD_LOW = 5;     // Low edge response = blurry
 
 /**
- * Detect blur in an image using Laplacian variance
- * @param imageData - ImageData from canvas
- * @returns BlurDetectionResult with blur status and score
- */
-export async function detectBlur(imageData: ImageData): Promise<BlurDetectionResult> {
-  if (!isTensorFlowReady()) {
-    // Return non-blocking result if TF not ready
-    return {
-      isBlurry: false,
-      score: 0,
-      variance: 0,
-    };
-  }
-
-  const tf = getTensorFlow();
-  let grayscale = null;
-  let kernel = null;
-  let convResult = null;
-  let variance = null;
-
-  try {
-    // Convert to grayscale tensor
-    grayscale = imageDataToGrayscale(imageData);
-
-    // Reshape for conv2d: [batch, height, width, channels]
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const input = grayscale.expandDims(0).expandDims(-1) as any;
-
-    // Create Laplacian kernel tensor [height, width, inChannels, outChannels]
-    kernel = tf.tensor4d(
-      LAPLACIAN_KERNEL.flat(),
-      [3, 3, 1, 1]
-    );
-
-    // Apply Laplacian convolution
-    convResult = tf.conv2d(input, kernel, 1, 'same');
-
-    // Calculate variance of the Laplacian
-    const mean = tf.mean(convResult);
-    const squaredDiff = tf.squaredDifference(convResult, mean);
-    variance = tf.mean(squaredDiff);
-
-    // Get variance value
-    const varianceValue = (await variance.data())[0];
-
-    // Calculate blur score (0 = very blurry, 1 = very sharp)
-    const score = normalizeBlurScore(varianceValue);
-    const isBlurry = varianceValue < BLUR_THRESHOLD_LOW;
-
-    // Cleanup intermediate tensors
-    input.dispose();
-    mean.dispose();
-    squaredDiff.dispose();
-
-    return {
-      isBlurry,
-      score,
-      variance: varianceValue,
-    };
-  } catch (error) {
-    console.error('[BlurDetector] Error detecting blur:', error);
-    return {
-      isBlurry: false,
-      score: 0.5,
-      variance: 0,
-    };
-  } finally {
-    // Cleanup tensors
-    disposeTensor(grayscale);
-    disposeTensor(kernel);
-    disposeTensor(convResult);
-    disposeTensor(variance);
-  }
-}
-
-/**
- * Fast blur detection using downsampled image
- * More efficient for real-time processing
+ * Fast blur detection using pure JavaScript (no TensorFlow, no GPU memory leaks)
+ * Uses Laplacian variance on sampled pixels
  */
 export async function detectBlurFast(imageData: ImageData): Promise<BlurDetectionResult> {
-  if (!isTensorFlowReady()) {
-    return { isBlurry: false, score: 0.5, variance: 0 };
-  }
+  const { width, height, data } = imageData;
 
-  const tf = getTensorFlow();
-  let grayscale = null;
-  let downsampled = null;
+  // Get grayscale brightness at pixel
+  const getBrightness = (x: number, y: number): number => {
+    const idx = (y * width + x) * 4;
+    return 0.299 * data[idx] + 0.587 * data[idx + 1] + 0.114 * data[idx + 2];
+  };
 
-  try {
-    grayscale = imageDataToGrayscale(imageData);
+  // Apply Laplacian kernel: [0,1,0; 1,-4,1; 0,1,0]
+  // and calculate variance of the result
+  const step = 2; // Sample every 2nd pixel for speed
+  let sum = 0;
+  let sumSq = 0;
+  let count = 0;
 
-    // Downsample to 200x200 max for faster processing
-    const targetSize = 200;
-    const scale = Math.min(targetSize / imageData.width, targetSize / imageData.height, 1);
-    const newWidth = Math.round(imageData.width * scale);
-    const newHeight = Math.round(imageData.height * scale);
+  for (let y = 1; y < height - 1; y += step) {
+    for (let x = 1; x < width - 1; x += step) {
+      // Laplacian = -4*center + top + bottom + left + right
+      const laplacian =
+        -4 * getBrightness(x, y) +
+        getBrightness(x, y - 1) +
+        getBrightness(x, y + 1) +
+        getBrightness(x - 1, y) +
+        getBrightness(x + 1, y);
 
-    if (scale < 1) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const expanded = grayscale.expandDims(0).expandDims(-1) as any;
-      downsampled = tf.image.resizeBilinear(
-        expanded,
-        [newHeight, newWidth]
-      ).squeeze([0, 3]);
-      grayscale.dispose();
-      grayscale = downsampled;
+      sum += laplacian;
+      sumSq += laplacian * laplacian;
+      count++;
     }
-
-    // Calculate variance using simple approach
-    const mean = tf.mean(grayscale);
-    const squaredDiff = tf.squaredDifference(grayscale, mean);
-    const variance = await tf.mean(squaredDiff).data();
-
-    // Apply Sobel-like edge detection for faster blur estimation
-    const sobelXKernel = tf.tensor4d(
-      [-1, 0, 1, -2, 0, 2, -1, 0, 1],
-      [3, 3, 1, 1]
-    );
-    const sobelYKernel = tf.tensor4d(
-      [-1, -2, -1, 0, 0, 0, 1, 2, 1],
-      [3, 3, 1, 1]
-    );
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const expanded = grayscale.expandDims(0).expandDims(-1) as any;
-    const sobelX = tf.conv2d(expanded, sobelXKernel, 1, 'same');
-    const sobelY = tf.conv2d(expanded, sobelYKernel, 1, 'same');
-    const gradient = tf.sqrt(tf.add(tf.square(sobelX), tf.square(sobelY)));
-    const edgeVariance = await tf.mean(gradient).data();
-
-    mean.dispose();
-    squaredDiff.dispose();
-    sobelXKernel.dispose();
-    sobelYKernel.dispose();
-    sobelX.dispose();
-    sobelY.dispose();
-    gradient.dispose();
-    expanded.dispose();
-
-    const score = normalizeBlurScore(edgeVariance[0] * 100);
-    const isBlurry = edgeVariance[0] < 5; // Low edge response = blurry
-
-    return {
-      isBlurry,
-      score,
-      variance: variance[0],
-    };
-  } catch (error) {
-    console.error('[BlurDetector] Fast blur detection error:', error);
-    return { isBlurry: false, score: 0.5, variance: 0 };
-  } finally {
-    disposeTensor(grayscale);
   }
+
+  // Calculate variance: E[X^2] - E[X]^2
+  const mean = sum / count;
+  const variance = (sumSq / count) - (mean * mean);
+
+  // Also calculate Sobel edge response for blur estimation
+  let edgeSum = 0;
+  let edgeCount = 0;
+
+  for (let y = 1; y < height - 1; y += step * 2) {
+    for (let x = 1; x < width - 1; x += step * 2) {
+      // Simplified Sobel X: -left + right
+      const gx = getBrightness(x + 1, y) - getBrightness(x - 1, y);
+      // Simplified Sobel Y: -top + bottom
+      const gy = getBrightness(x, y + 1) - getBrightness(x, y - 1);
+      edgeSum += Math.sqrt(gx * gx + gy * gy);
+      edgeCount++;
+    }
+  }
+
+  const edgeMean = edgeSum / edgeCount;
+  const score = normalizeBlurScore(edgeMean * 100);
+  const isBlurry = edgeMean < EDGE_THRESHOLD_LOW;
+
+  return {
+    isBlurry,
+    score,
+    variance,
+  };
 }
 
 /**

@@ -2,6 +2,7 @@
 
 import { useCallback, useRef, useEffect, useState } from 'react';
 import type { FrameData } from '../ml/types';
+import { logException } from '../error-logger';
 
 interface UseFrameProcessorOptions {
   targetFps?: number;
@@ -114,19 +115,27 @@ export function useFrameProcessor(options: UseFrameProcessorOptions = {}): UseFr
       const elapsed = currentTime - lastFrameTimeRef.current;
 
       if (elapsed >= frameInterval) {
-        const frame = processFrame(video);
+        try {
+          const frame = processFrame(video);
 
-        if (frame) {
-          onFrame(frame);
-          frameCountRef.current++;
+          if (frame) {
+            onFrame(frame);
+            frameCountRef.current++;
 
-          // Update FPS every second
-          const fpsDuration = currentTime - fpsStartTimeRef.current;
-          if (fpsDuration >= 1000) {
-            setCurrentFps(Math.round((frameCountRef.current * 1000) / fpsDuration));
-            frameCountRef.current = 0;
-            fpsStartTimeRef.current = currentTime;
+            // Update FPS every second
+            const fpsDuration = currentTime - fpsStartTimeRef.current;
+            if (fpsDuration >= 1000) {
+              setCurrentFps(Math.round((frameCountRef.current * 1000) / fpsDuration));
+              frameCountRef.current = 0;
+              fpsStartTimeRef.current = currentTime;
+            }
           }
+        } catch (error) {
+          // Catch memory errors gracefully on mobile and log to Vercel
+          logException(error instanceof Error ? error : new Error(String(error)), {
+            component: 'useFrameProcessor',
+            action: 'processLoop',
+          });
         }
 
         lastFrameTimeRef.current = currentTime;

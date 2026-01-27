@@ -17,6 +17,7 @@ import { detectBlurFast } from './blur-detector';
 import { detectGlareFast } from './glare-detector';
 import { detectFace, initFaceDetector, isFaceDetectorReady } from './face-detector';
 import { detectDocumentFast } from './document-detector';
+import { logError, logException } from '../error-logger';
 
 // Import default config
 import { DEFAULT_DETECTION_CONFIG as defaultConfig } from './types';
@@ -61,18 +62,28 @@ export async function initializeAnalyzer(): Promise<boolean> {
     try {
       console.log('[FrameAnalyzer] Initializing ML components...');
 
-      // Initialize TensorFlow.js
-      await initializeTensorFlow();
+      // Core detectors (document, blur, glare) are pure JS - no TF needed
+      // TF is only needed for face detection, so init it non-blocking
+      const isMobile = typeof navigator !== 'undefined' &&
+        /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
-      // Initialize face detector (async, non-blocking)
-      initFaceDetector().catch(err => {
-        console.warn('[FrameAnalyzer] Face detector init failed, will skip face detection:', err);
-      });
+      if (!isMobile) {
+        // Desktop: initialize TF + face detector in background (non-blocking)
+        initializeTensorFlow()
+          .then(() => initFaceDetector())
+          .catch(err => {
+            console.warn('[FrameAnalyzer] TF/Face detector init failed, face detection disabled:', err);
+          });
+      }
+      // Mobile: skip TF entirely to save ~50MB+ GPU memory
 
       isInitialized = true;
       console.log('[FrameAnalyzer] Initialization complete');
     } catch (error) {
-      console.error('[FrameAnalyzer] Initialization failed:', error);
+      logException(error instanceof Error ? error : new Error(String(error)), {
+        component: 'FrameAnalyzer',
+        action: 'initialize',
+      });
       isInitialized = false;
     }
   })();
@@ -115,13 +126,8 @@ export async function analyzeFrame(
     timestamp,
   };
 
-  // If TensorFlow not ready, return basic result
-  if (!isTensorFlowReady()) {
-    return result;
-  }
-
   try {
-    // Run detections in parallel for better performance
+    // Run detections in parallel (all use pure JS - no TF tensors, no GPU memory)
     const [documentResult, blurResult, glareResult] = await Promise.all([
       mergedConfig.enableDocumentDetection
         ? detectDocumentFast(imageData)
@@ -134,9 +140,9 @@ export async function analyzeFrame(
         : Promise.resolve({ hasGlare: false, score: 0, hotspotCount: 0, brightnessHistogram: [] }),
     ]);
 
-    // Face detection - only if document detected and face detector ready
+    // Face detection - only if document detected, TF ready, and face detector ready
     let faceResult: FaceDetectionResult = { detected: false, confidence: 0, bounds: null, landmarks: null };
-    if (mergedConfig.enableFaceDetection && documentResult.detected && isFaceDetectorReady()) {
+    if (mergedConfig.enableFaceDetection && documentResult.detected && isTensorFlowReady() && isFaceDetectorReady()) {
       try {
         faceResult = await detectFace(imageData);
       } catch (error) {
@@ -186,7 +192,10 @@ export async function analyzeFrame(
 
     return result;
   } catch (error) {
-    console.error('[FrameAnalyzer] Frame analysis error:', error);
+    logException(error instanceof Error ? error : new Error(String(error)), {
+      component: 'FrameAnalyzer',
+      action: 'analyzeFrame',
+    });
     return result;
   }
 }
@@ -341,9 +350,11 @@ export function getStatusMessage(result: DetectionResult, config: DetectionConfi
 
 /**
  * Check if analyzer is ready
+ * Core detectors (document, blur, glare) are pure JS - no TF needed
+ * Face detection requires TF but is optional
  */
 export function isAnalyzerReady(): boolean {
-  return isInitialized && isTensorFlowReady();
+  return isInitialized;
 }
 
 /**
