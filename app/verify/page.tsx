@@ -95,19 +95,6 @@ function VerifyPageContent() {
     }
   }, [])
 
-  // TEMPORARY: Load Eruda mobile console for debugging
-  useEffect(() => {
-    const script = document.createElement('script')
-    script.src = 'https://cdn.jsdelivr.net/npm/eruda'
-    script.onload = () => {
-      // @ts-expect-error eruda is loaded globally
-      if (window.eruda) window.eruda.init()
-    }
-    document.body.appendChild(script)
-    return () => {
-      script.remove()
-    }
-  }, [])
 
   // SDK messaging helper
   const sendSDKMessage = useCallback(<T,>(type: Parameters<typeof sendToParent>[0], payload: T) => {
@@ -576,7 +563,7 @@ function VerifyPageContent() {
                     'Agree and continue'
                   )}
                 </Button>
-                <p className="text-center text-gray-300 text-xs mt-2">v1.25.4</p>
+                <p className="text-center text-gray-300 text-xs mt-2">v1.25.5</p>
               </div>
             </div>
           </div>
